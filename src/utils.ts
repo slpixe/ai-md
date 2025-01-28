@@ -125,15 +125,7 @@ export function escapeTripleBackticks(content: string): string {
 
 export function createIgnoreFilter(ignorePatterns: string[], ignoreFile: string): Ignore {
   const ig = require("ignore")().add(ignorePatterns);
-  if (ignorePatterns.length > 0) {
-    logger.info(`Ignore patterns from ${ignoreFile}:`);
-    ignorePatterns.forEach((pattern) => {
-      logger.info(`  - ${pattern}`);
-    });
-  } else {
-    logger.warn("No custom ignore patterns found.");
-  }
-  return ig;
+  return ig; // Logging moved to index.ts
 }
 
 export function estimateTokenCount(text: string): number {
