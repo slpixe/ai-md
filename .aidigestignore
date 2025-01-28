@@ -1,2 +1,5 @@
 test/test-ignore.ts
 dist
+.idea
+.aidigestignore
+.gitignore

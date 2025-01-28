@@ -13,14 +13,16 @@
     "build": "tsc",
     "start": "ts-node src/index.ts",
     "prepublishOnly": "npm run build",
-    "test": "jest --config jest.config.js"
+    "test": "jest --config jest.config.js",
+    "local-run": "npx ai-txt --whitespace-removal --show-output-files",
+    "publish": "npm publish --access public"
   },
   "keywords": [
     "cli",
     "aggregate",
     "markdown"
   ],
-  "author": "Stanislav Khromov",
+  "author": "@slpixe",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.12",
@@ -37,7 +39,7 @@
     "isbinaryfile": "^5.0.2",
     "js-tiktoken": "^1.0.12"
   },
-  "homepage": "https://github.com/slpixe/ai-txt?tab=readme-ov-file#readme",
+  "homepage": "https://github.com/slpixe/ai-txt#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/slpixe/ai-txt.git"
