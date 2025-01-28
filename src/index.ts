@@ -234,6 +234,7 @@ async function aggregateFiles(
     enableConcurrency: boolean // <-- renamed from useConcurrency
 ): Promise<void> {
   try {
+    const startTime = Date.now();
     // Load custom ignore patterns, set up default ignore
     const ignoreDir = path.dirname(ignoreFilePath);
     const ignoreName = path.basename(ignoreFilePath);
@@ -374,6 +375,8 @@ async function aggregateFiles(
     }
 
     logger.info(`✅ Done! Wrote code base to ${outputFile}`);
+    const endTime = Date.now();
+    logger.info(`⏱️  Aggregation took ${endTime - startTime} ms`);
   } catch (error) {
     logger.error(`❌ Error aggregating files: ${(error as Error).message}`);
     process.exit(1);
