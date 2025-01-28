@@ -130,8 +130,6 @@ describe("AI Digest CLI", () => {
       // Create a custom ignore file
       await fs.writeFile(path.join(tempDir, 'custom.ignore'), '*.js');
 
-      // Run the CLI with the custom ignore file
-      // const { stdout } = await runCLI(`--input ${tempDir} --ignore-file custom.ignore --show-output-files`);
       const { stdout } = await runCLI(
           `--input ${tempDir} --ignore-file custom.ignore --show-output-files`,
           { cwd: tempDir }  // <--- ensures process.cwd() == tempDir
