@@ -1,11 +1,11 @@
 {
   "name": "@slpixe/ai-txt",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "CLI tool to aggregate files into a single Markdown file",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "ai-txt": "./dist/index.js"
+    "ai-txt": "dist/index.js"
   },
   "engines": {
     "node": ">=20.0.0"
