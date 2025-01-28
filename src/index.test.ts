@@ -76,7 +76,7 @@ describe("AI Digest CLI", () => {
 
   it("should respect the --input flag", async () => {
     // Create a temporary directory
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-digest-test-'));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-txt-test-'));
   
     try {
       // Create some test files in the temporary directory
@@ -120,7 +120,7 @@ describe("AI Digest CLI", () => {
 
   it("should respect custom ignore file", async () => {
     // Create a temporary directory
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-digest-custom-ignore-test-'));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-txt-custom-ignore-test-'));
   
     try {
       // Create some test files in the temporary directory
@@ -160,7 +160,7 @@ describe("AI Digest CLI", () => {
 
   it("should sort files in natural path order", async () => {
     // Create a temporary directory
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-digest-sort-test-'));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ai-txt-sort-test-'));
   
     try {
       // Create test files and directories

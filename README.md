@@ -1,4 +1,4 @@
-# ai-digest
+# ai-txt
 
 A CLI tool to aggregate your codebase into a single Markdown file for use with Claude Projects or custom ChatGPTs.
 
@@ -14,7 +14,7 @@ A CLI tool to aggregate your codebase into a single Markdown file for use with C
 Start by running the CLI tool in your project directory:
 
 ```bash
-npx ai-digest
+npx ai-txt
 ```
 
 This will generate a `codebase.md` file with your codebase.
@@ -46,43 +46,43 @@ For best results, re-upload the Markdown file before starting a new chat session
 1. Basic usage:
 
    ```bash
-   npx ai-digest
+   npx ai-txt
    ```
 
 2. Specify input and output:
 
    ```bash
-   npx ai-digest -i /path/to/your/project -o project_summary.md
+   npx ai-txt -i /path/to/your/project -o project_summary.md
    ```
 
 3. Enable whitespace removal:
 
    ```bash
-   npx ai-digest --whitespace-removal
+   npx ai-txt --whitespace-removal
    ```
 
 4. Show list of included files:
 
    ```bash
-   npx ai-digest --show-output-files
+   npx ai-txt --show-output-files
    ```
 
 5. Combine multiple options:
 
    ```bash
-   npx ai-digest -i /path/to/your/project -o project_summary.md --whitespace-removal --show-output-files
+   npx ai-txt -i /path/to/your/project -o project_summary.md --whitespace-removal --show-output-files
    ```
 
 ## Custom Ignore Patterns
 
-ai-digest supports custom ignore patterns using a `.aidigestignore` file in the root directory of your project. This file works similarly to `.gitignore`, allowing you to specify files and directories that should be excluded from the aggregation.
+ai-txt supports custom ignore patterns using a `.aidigestignore` file in the root directory of your project. This file works similarly to `.gitignore`, allowing you to specify files and directories that should be excluded from the aggregation.
 
 Use the `--show-output-files` flag to see which files are being included, making it easier to identify candidates for exclusion.
 
 
 ## Whitespace Removal
 
-When using the `--whitespace-removal` flag, ai-digest removes excess whitespace from files to reduce the token count when used with AI models. This feature is disabled for whitespace-dependent languages like Python and YAML.
+When using the `--whitespace-removal` flag, ai-txt removes excess whitespace from files to reduce the token count when used with AI models. This feature is disabled for whitespace-dependent languages like Python and YAML.
 
 ## Binary and SVG File Handling
 
