@@ -2,6 +2,18 @@ import { Ignore } from "ignore";
 import { isBinaryFile } from "isbinaryfile";
 import { encodingForModel } from "js-tiktoken";
 import path from 'path';
+import winston from 'winston';
+
+// Setup Winston logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level}]: ${message}`)
+  ),
+  transports: [new winston.transports.Console()]
+});
 
 export const WHITESPACE_DEPENDENT_EXTENSIONS = [
   ".py", // Python
@@ -113,15 +125,7 @@ export function escapeTripleBackticks(content: string): string {
 
 export function createIgnoreFilter(ignorePatterns: string[], ignoreFile: string): Ignore {
   const ig = require("ignore")().add(ignorePatterns);
-  if (ignorePatterns.length > 0) {
-    console.log(`Ignore patterns from ${ignoreFile}:`);
-    ignorePatterns.forEach((pattern) => {
-      console.log(`  - ${pattern}`);
-    });
-  } else {
-    console.log("No custom ignore patterns found.");
-  }
-  return ig;
+  return ig; // Logging moved to index.ts
 }
 
 export function estimateTokenCount(text: string): number {
@@ -130,13 +134,9 @@ export function estimateTokenCount(text: string): number {
     const tokens = enc.encode(text);
     return tokens.length;
   } catch (error) {
-    console.error(error);
+    logger.error("Error estimating token count:", error);
     return 0;
   }
-}
-
-export function formatLog(message: string, emoji: string = ""): string {
-  return `${emoji ? emoji + " " : ""}${message}`;
 }
 
 export async function isTextFile(filePath: string): Promise<boolean> {
@@ -144,7 +144,7 @@ export async function isTextFile(filePath: string): Promise<boolean> {
     const isBinary = await isBinaryFile(filePath);
     return !isBinary && !filePath.toLowerCase().endsWith('.svg');
   } catch (error) {
-    console.error(`Error checking if file is binary: ${filePath}`, error);
+    logger.error(`Error checking if file is binary: ${filePath}`, error);
     return false;
   }
 }
