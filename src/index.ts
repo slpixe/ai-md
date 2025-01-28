@@ -5,6 +5,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { glob } from 'glob';
 import ignore, { type Ignore } from 'ignore';
+import winston from 'winston';
 import {
   WHITESPACE_DEPENDENT_EXTENSIONS,
   DEFAULT_IGNORES,
@@ -12,7 +13,6 @@ import {
   escapeTripleBackticks,
   createIgnoreFilter,
   estimateTokenCount,
-  formatLog,
   isTextFile,
   getFileType,
   shouldTreatAsBinary
@@ -21,6 +21,17 @@ import {
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for the final aggregated output
 const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // Skip text files bigger than 5MB
 
+// Setup Winston logger
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+      winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level}]: ${message}`)
+  ),
+  transports: [new winston.transports.Console()]
+});
+
 /**
  * Reads lines from an ignore file in `fileDir/fileName`. If it doesn't exist, return an empty array.
  */
@@ -28,18 +39,16 @@ async function readIgnoreFile(fileDir: string, fileName: string): Promise<string
   try {
     const filePath = path.join(fileDir, fileName);
     const content = await fs.readFile(filePath, 'utf-8');
-    console.log(formatLog(`Found ${fileName} file in ${fileDir}.`, '📄'));
+    logger.info(`📄 Found ${fileName} file in ${fileDir}.`);
     return content
         .split('\n')
         .filter((line) => line.trim() !== '' && !line.startsWith('#'));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      console.log(formatLog(`No ${fileName} file found in ${fileDir}.`, '❓'));
+      logger.warn(`❓ No ${fileName} file found in ${fileDir}.`);
       return [];
     }
-    console.error(
-        formatLog(`Error reading ignore file ${fileName} in ${fileDir}: ${(error as Error).message}`, '❌')
-    );
+    logger.error(`❌ Error reading ignore file ${fileName} in ${fileDir}: ${(error as Error).message}`);
     throw error;
   }
 }
@@ -70,12 +79,7 @@ async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; file: s
         allFiles.push({ cwd: parent, file: justFile });
       }
     } catch (error) {
-      console.error(
-          formatLog(
-              `Error gathering files for path ${inputPath}: ${(error as Error).message}`,
-              '❌'
-          )
-      );
+      logger.error(`❌ Error gathering files for path ${inputPath}: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -188,12 +192,7 @@ async function processSingleFile(
       };
     }
   } catch (error) {
-    console.error(
-        formatLog(
-            `Error processing file ${file} in directory ${cwd}: ${(error as Error).message}`,
-            '❌'
-        )
-    );
+    logger.error(`❌ Error processing file ${file} in directory ${cwd}: ${(error as Error).message}`);
     return {
       snippet: '',
       wasIncluded: false,
@@ -208,9 +207,9 @@ async function processSingleFile(
  * Display an ordered list of included files in the console.
  */
 function displayIncludedFiles(includedFiles: string[]): void {
-  console.log(formatLog('Files included in the output:', '📋'));
+  logger.info('📋 Files included in the output:');
   includedFiles.forEach((file, index) => {
-    console.log(`${index + 1}. ${file}`);
+    logger.info(`  ${index + 1}. ${file}`);
   });
 }
 
@@ -240,32 +239,22 @@ async function aggregateFiles(
     const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
     const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
 
-    console.log(
-        formatLog(
-            useDefaultIgnores ? 'Using default ignore patterns.' : 'Default ignore patterns disabled.',
-            useDefaultIgnores ? '🚫' : '✅'
-        )
+    logger.info(
+        useDefaultIgnores ? '📄 Using default ignore patterns.' : '🛠️ Custom ignore patterns enabled.'
     );
     if (userIgnorePatterns.length > 0) {
-      console.log(formatLog(`Ignore patterns from ${ignoreName}:`, '📄'));
-      userIgnorePatterns.forEach((pattern) => console.log(`  - ${pattern}`));
+      logger.info(`📄 Ignore patterns from ${ignoreName}:`);
+      userIgnorePatterns.forEach((pattern) => logger.info(`  - ${pattern}`));
     }
 
     if (removeWhitespaceFlag) {
-      console.log(
-          formatLog(
-              'Whitespace removal enabled (except for whitespace-dependent languages).',
-              '🧹'
-          )
-      );
+      logger.info('🧹 Whitespace removal enabled (except for whitespace-dependent languages).');
     } else {
-      console.log(formatLog('Whitespace removal disabled.', '📝'));
+      logger.info('📝 Whitespace removal disabled.');
     }
 
     const allFiles = await gatherFiles(inputPaths);
-    console.log(
-        formatLog(`Found ${allFiles.length} file paths across all inputs. Applying filters...`, '🔍')
-    );
+    logger.info(`🔍 Found ${allFiles.length} file paths across all inputs. Applying filters...`);
 
     allFiles.sort((a, b) => {
       const fullA = path.join(a.cwd, a.file);
@@ -331,41 +320,33 @@ async function aggregateFiles(
     const stats = await fs.stat(outputFile);
     const fileSizeInBytes = stats.size;
     if (fileSizeInBytes !== Buffer.byteLength(finalOutput)) {
-      throw new Error('File size mismatch after writing');
+      throw new Error('❌ File size mismatch after writing');
     }
 
-    console.log(formatLog(`Files aggregated successfully into ${outputFile}`, '✅'));
-    console.log(formatLog(`Total files found: ${allFiles.length}`, '📚'));
-    console.log(formatLog(`Files included in output: ${includedCount}`, '📎'));
+    logger.info(`✅ Files aggregated successfully into ${outputFile}`);
+    logger.info(`📚 Total files found: ${allFiles.length}`);
+    logger.info(`📎 Files included in output: ${includedCount}`);
     if (useDefaultIgnores) {
-      console.log(formatLog(`Files ignored by default patterns: ${defaultIgnoredCount}`, '🚫'));
+      logger.info(`🚫 Files ignored by default patterns: ${defaultIgnoredCount}`);
     }
     if (customIgnoredCount > 0) {
-      console.log(formatLog(`Files ignored by .aidigestignore: ${customIgnoredCount}`, '🚫'));
+      logger.info(`🚫 Files ignored by ${ignoreName}: ${customIgnoredCount}`);
     }
-    console.log(formatLog(`Binary and SVG files included: ${binaryAndSvgFileCount}`, '📦'));
+    logger.info(`📦 Binary and SVG files included: ${binaryAndSvgFileCount}`);
 
     if (fileSizeInBytes > MAX_FILE_SIZE) {
-      console.log(
-          formatLog(
-              `Warning: Output file size (${(fileSizeInBytes / 1024 / 1024).toFixed(
-                  2
-              )} MB) exceeds 10 MB.`,
-              '⚠️'
-          )
+      logger.warn(
+          `⚠️ Warning: Output file size (${(fileSizeInBytes / 1024 / 1024).toFixed(
+              2
+          )} MB) exceeds 10 MB.`
       );
-      console.log(formatLog('Token count estimation skipped due to large file size.', '⚠️'));
-      console.log(
-          formatLog('Consider adding more files to .aidigestignore to reduce the output size.', '💡')
-      );
+      logger.warn('⚠️ Token count estimation skipped due to large file size.');
+      logger.warn('💡 Consider adding more files to ignore patterns to reduce the output size.');
     } else {
       const tokenCount = estimateTokenCount(finalOutput);
-      console.log(formatLog(`Estimated token count: ${tokenCount}`, '🔢'));
-      console.log(
-          formatLog(
-              'Note: Token count is an approximation using GPT-4 tokenizer. For ChatGPT, it should be accurate. For Claude, it may be ±20% approximately.',
-              '⚠️'
-          )
+      logger.info(`🔢 Estimated token count: ${tokenCount}`);
+      logger.info(
+          '⚠️ Note: Token count is an approximation using GPT-4 tokenizer. For ChatGPT, it should be accurate. For Claude, it may be ±20% approximately.'
       );
     }
 
@@ -373,11 +354,9 @@ async function aggregateFiles(
       displayIncludedFiles(includedFiles);
     }
 
-    console.log(formatLog(`Done! Wrote code base to ${outputFile}`, '✅'));
+    logger.info(`✅ Done! Wrote code base to ${outputFile}`);
   } catch (error) {
-    console.error(
-        formatLog(`Error aggregating files: ${(error as Error).message}`, '❌')
-    );
+    logger.error(`❌ Error aggregating files: ${(error as Error).message}`);
     process.exit(1);
   }
 }

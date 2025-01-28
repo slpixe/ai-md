@@ -52,7 +52,7 @@ describe("AI Digest CLI", () => {
 
   it("should disable default ignores when flag is set", async () => {
     const { stdout } = await runCLI("--no-default-ignores");
-    expect(stdout).toContain("Default ignore patterns disabled");
+    expect(stdout).toContain("🛠️ Custom ignore patterns enabled.");
   }, 10000);
 
   it("should include binary files with a note", async () => {
