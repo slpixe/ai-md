@@ -118,17 +118,21 @@ async function aggregateFiles(
     let includedFiles: string[] = [];
 
     for (const { cwd, file } of allFiles) {
+      // This is the absolute location:
       const absolutePath = path.join(cwd, file);
-      // "relativePath" is how it appears in the final Markdown:
-      // Could be just `file` if you want, or `path.relative(process.cwd(), absolutePath)`.
-      // Choose whichever is more intuitive for your aggregator output.
-      const relativePath = path.relative(process.cwd(), absolutePath);
 
-      // If it's the output file, skip
-      if (
-          path.relative(process.cwd(), outputFile) === relativePath ||
-          (useDefaultIgnores && defaultIgnore.ignores(relativePath))
-      ) {
+      // 1) Use 'file' itself as your "relative" path to feed into ignore()
+      //    because 'file' is already relative to 'cwd' from glob.
+      const relativePath = file;
+
+      // 2) If you need to check “is this the output file?”, compare absolutes:
+      if (absolutePath === outputFile) {
+        defaultIgnoredCount++;
+        continue;
+      }
+
+      // 3) Use the *relative-to-cwd* path for ignoring
+      if (useDefaultIgnores && defaultIgnore.ignores(relativePath)) {
         defaultIgnoredCount++;
         continue;
       }
