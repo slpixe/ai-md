@@ -6,6 +6,7 @@ import path from 'path';
 import { glob } from 'glob';
 import ignore, { type Ignore } from 'ignore';
 import winston from 'winston';
+import pLimit from 'p-limit';
 import {
   WHITESPACE_DEPENDENT_EXTENSIONS,
   DEFAULT_IGNORES,
@@ -18,8 +19,8 @@ import {
   shouldTreatAsBinary
 } from './utils';
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for the final aggregated output
-const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // Skip text files bigger than 5MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Setup Winston logger
 const logger = winston.createLogger({
@@ -221,7 +222,7 @@ function naturalSort(a: string, b: string): number {
 }
 
 /**
- * Core aggregator that merges all files from `inputPaths` into one markdown file.
+ * The main aggregator that merges all files into a single Markdown file.
  */
 async function aggregateFiles(
     inputPaths: string[],
@@ -229,22 +230,26 @@ async function aggregateFiles(
     useDefaultIgnores: boolean,
     removeWhitespaceFlag: boolean,
     showOutputFiles: boolean,
-    ignoreFilePath: string
+    ignoreFilePath: string,
+    enableConcurrency: boolean // <-- renamed from useConcurrency
 ): Promise<void> {
   try {
+    // Load custom ignore patterns, set up default ignore
     const ignoreDir = path.dirname(ignoreFilePath);
     const ignoreName = path.basename(ignoreFilePath);
     const userIgnorePatterns = await readIgnoreFile(ignoreDir, ignoreName);
-
     const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
     const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
 
     logger.info(
-        useDefaultIgnores ? '📄 Using default ignore patterns.' : '🛠️ Custom ignore patterns enabled.'
+        useDefaultIgnores
+            ? '📄 Using default ignore patterns.'
+            : '🛠️ Custom ignore patterns enabled.'
     );
+
     if (userIgnorePatterns.length > 0) {
       logger.info(`📄 Ignore patterns from ${ignoreName}:`);
-      userIgnorePatterns.forEach((pattern) => logger.info(`  - ${pattern}`));
+      userIgnorePatterns.forEach((pattern) => logger.info(` - ${pattern}`));
     }
 
     if (removeWhitespaceFlag) {
@@ -253,55 +258,66 @@ async function aggregateFiles(
       logger.info('📝 Whitespace removal disabled.');
     }
 
+    // Gather all files
     const allFiles = await gatherFiles(inputPaths);
     logger.info(`🔍 Found ${allFiles.length} file paths across all inputs. Applying filters...`);
 
+    // Sort them in natural order
     allFiles.sort((a, b) => {
       const fullA = path.join(a.cwd, a.file);
       const fullB = path.join(b.cwd, b.file);
       return naturalSort(fullA, fullB);
     });
 
+    // If concurrency is enabled, create a p-limit instance
+    const limit = enableConcurrency ? pLimit(5) : null;
+
+    /**
+     * Wrap the call to processSingleFile in a concurrency limiter if enabled.
+     */
+    const processFile = async ({ cwd, file }: { cwd: string; file: string }) => {
+      if (limit) {
+        // If concurrency is enabled, run within p-limit
+        return limit(() =>
+            processSingleFile(
+                cwd,
+                file,
+                outputFile,
+                useDefaultIgnores,
+                defaultIgnore,
+                customIgnore,
+                removeWhitespaceFlag
+            )
+        );
+      } else {
+        // Otherwise, just call directly
+        return processSingleFile(
+            cwd,
+            file,
+            outputFile,
+            useDefaultIgnores,
+            defaultIgnore,
+            customIgnore,
+            removeWhitespaceFlag
+        );
+      }
+    };
+
+    // Process all files with or without concurrency
+    const results = await Promise.all(allFiles.map(processFile));
+
+    // Aggregate results
+    const outputChunks: string[] = [];
     let includedCount = 0;
     let defaultIgnoredCount = 0;
     let customIgnoredCount = 0;
     let binaryAndSvgFileCount = 0;
-
     const includedFiles: string[] = [];
-    const outputChunks: string[] = [];
 
-    // For concurrency, do:
-    // const results = await Promise.all(
-    //   allFiles.map(({ cwd, file }) =>
-    //     limit(() =>
-    //       processSingleFile(
-    //         cwd,
-    //         file,
-    //         outputFile,
-    //         useDefaultIgnores,
-    //         defaultIgnore,
-    //         customIgnore,
-    //         removeWhitespaceFlag
-    //       )
-    //     )
-    //   )
-    // );
-
-    // Without concurrency:
-    const results = [];
-    for (const { cwd, file } of allFiles) {
-      const result = await processSingleFile(
-          cwd,
-          file,
-          outputFile,
-          useDefaultIgnores,
-          defaultIgnore,
-          customIgnore,
-          removeWhitespaceFlag
-      );
-
+    for (const result of results) {
       if (result.defaultIgnored) defaultIgnoredCount++;
       if (result.customIgnored) customIgnoredCount++;
+
       if (result.wasIncluded) {
         outputChunks.push(result.snippet);
         const match = result.snippet.match(/^# (.+)\n/m);
@@ -313,27 +329,27 @@ async function aggregateFiles(
       }
     }
 
+    // Write the aggregated file
     const finalOutput = outputChunks.join('');
     await fs.mkdir(path.dirname(outputFile), { recursive: true });
     await fs.writeFile(outputFile, finalOutput, { flag: 'w' });
 
+    // Verify correct file size
     const stats = await fs.stat(outputFile);
     const fileSizeInBytes = stats.size;
     if (fileSizeInBytes !== Buffer.byteLength(finalOutput)) {
       throw new Error('❌ File size mismatch after writing');
     }
 
+    // Logging
     logger.info(`✅ Files aggregated successfully into ${outputFile}`);
     logger.info(`📚 Total files found: ${allFiles.length}`);
     logger.info(`📎 Files included in output: ${includedCount}`);
-    if (useDefaultIgnores) {
-      logger.info(`🚫 Files ignored by default patterns: ${defaultIgnoredCount}`);
-    }
-    if (customIgnoredCount > 0) {
-      logger.info(`🚫 Files ignored by ${ignoreName}: ${customIgnoredCount}`);
-    }
+    logger.info(`🚫 Files ignored by default patterns: ${defaultIgnoredCount}`);
+    logger.info(`🚫 Files ignored by custom patterns: ${customIgnoredCount}`);
     logger.info(`📦 Binary and SVG files included: ${binaryAndSvgFileCount}`);
 
+    // Check file size or estimate tokens
     if (fileSizeInBytes > MAX_FILE_SIZE) {
       logger.warn(
           `⚠️ Warning: Output file size (${(fileSizeInBytes / 1024 / 1024).toFixed(
@@ -341,12 +357,15 @@ async function aggregateFiles(
           )} MB) exceeds 10 MB.`
       );
       logger.warn('⚠️ Token count estimation skipped due to large file size.');
-      logger.warn('💡 Consider adding more files to ignore patterns to reduce the output size.');
+      logger.warn(
+          '💡 Consider adding more files to ignore patterns to reduce the output size.'
+      );
     } else {
       const tokenCount = estimateTokenCount(finalOutput);
       logger.info(`🔢 Estimated token count: ${tokenCount}`);
       logger.info(
-          '⚠️ Note: Token count is an approximation using GPT-4 tokenizer. For ChatGPT, it should be accurate. For Claude, it may be ±20% approximately.'
+          '⚠️ Note: Token count is an approximation using GPT-4 tokenizer. ' +
+          'For ChatGPT, it should be accurate. For Claude, ±20%.'
       );
     }
 
@@ -361,7 +380,9 @@ async function aggregateFiles(
   }
 }
 
-// --------------------- CLI Definition with Commander --------------------- //
+/**
+ * Attach CLI logic to Commander
+ */
 program
     .version('1.0.0')
     .description('Aggregate files into a single Markdown file')
@@ -371,10 +392,16 @@ program
     .option('--whitespace-removal', 'Enable whitespace removal')
     .option('--show-output-files', 'Display a list of files included in the output')
     .option('--ignore-file <file>', 'Custom ignore file name', '.aidigestignore')
+    // Renamed from `--use-concurrency`
+    .option('--concurrent', 'Enable concurrency for processing files')
     .action(async (options) => {
-      let inputPaths: string[] = options.input || [process.cwd()];
-      const outputFile = path.isAbsolute(options.output) ? options.output : path.join(process.cwd(), options.output);
-      const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile) ? options.ignoreFile : path.join(process.cwd(), options.ignoreFile);
+      const inputPaths = options.input || [process.cwd()];
+      const outputFile = path.isAbsolute(options.output)
+          ? options.output
+          : path.join(process.cwd(), options.output);
+      const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile)
+          ? options.ignoreFile
+          : path.join(process.cwd(), options.ignoreFile);
 
       await aggregateFiles(
           inputPaths,
@@ -382,7 +409,8 @@ program
           options.defaultIgnores,
           options.whitespaceRemoval,
           options.showOutputFiles,
-          ignoreFileAbsolute
+          ignoreFileAbsolute,
+          options.concurrent // pass the new flag to aggregator
       );
     });
 
