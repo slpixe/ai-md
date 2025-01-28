@@ -4,9 +4,6 @@ import { program } from 'commander';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { glob } from 'glob';
-// Uncomment if you want concurrency with p-limit:
-// import pLimit from 'p-limit';
-// import ignore from 'ignore';
 import ignore, { type Ignore } from 'ignore';
 import {
   WHITESPACE_DEPENDENT_EXTENSIONS,
@@ -21,21 +18,11 @@ import {
   shouldTreatAsBinary
 } from './utils';
 
-// type IgnoreInstance = ReturnType<typeof ignore>;
-
-interface ProcessResult {
-  snippet: string;
-  wasIncluded: boolean;
-  defaultIgnored: boolean;
-  customIgnored: boolean;
-  isBinaryOrSvg: boolean;
-}
-
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB for the final aggregated output
-const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // Example: skip any text file bigger than 5MB
+const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // Skip text files bigger than 5MB
 
 /**
- * Reads lines from an ignore file in `fileDir/fileName`. If it doesn't exist, return empty array.
+ * Reads lines from an ignore file in `fileDir/fileName`. If it doesn't exist, return an empty array.
  */
 async function readIgnoreFile(fileDir: string, fileName: string): Promise<string[]> {
   try {
@@ -50,6 +37,9 @@ async function readIgnoreFile(fileDir: string, fileName: string): Promise<string
       console.log(formatLog(`No ${fileName} file found in ${fileDir}.`, '❓'));
       return [];
     }
+    console.error(
+        formatLog(`Error reading ignore file ${fileName} in ${fileDir}: ${(error as Error).message}`, '❌')
+    );
     throw error;
   }
 }
@@ -61,24 +51,32 @@ async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; file: s
   let allFiles: { cwd: string; file: string }[] = [];
 
   for (const inputPath of inputPaths) {
-    const resolved = path.resolve(inputPath);
-    const stat = await fs.stat(resolved);
+    try {
+      const resolved = path.resolve(inputPath);
+      const stat = await fs.stat(resolved);
 
-    if (stat.isDirectory()) {
-      // Glob everything inside this directory
-      const filesInDir = await glob('**/*', {
-        nodir: true,
-        dot: true,
-        cwd: resolved,
-      });
-      for (const f of filesInDir) {
-        allFiles.push({ cwd: resolved, file: f });
+      if (stat.isDirectory()) {
+        const filesInDir = await glob('**/*', {
+          nodir: true,
+          dot: true,
+          cwd: resolved
+        });
+        for (const f of filesInDir) {
+          allFiles.push({ cwd: resolved, file: f });
+        }
+      } else {
+        const parent = path.dirname(resolved);
+        const justFile = path.basename(resolved);
+        allFiles.push({ cwd: parent, file: justFile });
       }
-    } else {
-      // It's a file, so just add it directly
-      const parent = path.dirname(resolved);
-      const justFile = path.basename(resolved);
-      allFiles.push({ cwd: parent, file: justFile });
+    } catch (error) {
+      console.error(
+          formatLog(
+              `Error gathering files for path ${inputPath}: ${(error as Error).message}`,
+              '❌'
+          )
+      );
+      throw error;
     }
   }
 
@@ -87,7 +85,7 @@ async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; file: s
 
 /**
  * Creates a single file snippet if included, or returns null if ignored.
- * Also returns info about whether it's binary or svg for counting.
+ * Also returns info about whether it's binary or SVG for counting.
  */
 async function processSingleFile(
     cwd: string,
@@ -97,108 +95,111 @@ async function processSingleFile(
     defaultIgnore: Ignore,
     customIgnore: Ignore,
     removeWhitespaceFlag: boolean
-): Promise<ProcessResult> {
-  const absolutePath = path.join(cwd, file);
+): Promise<{
+  snippet: string;
+  wasIncluded: boolean;
+  defaultIgnored: boolean;
+  customIgnored: boolean;
+  isBinaryOrSvg: boolean;
+}> {
+  try {
+    const absolutePath = path.join(cwd, file);
 
-  // If literally the output file, skip
-  if (absolutePath === outputFile) {
-    return {
-      snippet: '',
-      wasIncluded: false,
-      defaultIgnored: true, // We'll count it as default ignored
-      customIgnored: false,
-      isBinaryOrSvg: false,
-    };
-  }
-
-  // Our path to pass to .ignores():
-  const relativePath = file;
-
-  // If default ignore is on and matches, skip
-  if (useDefaultIgnores && defaultIgnore.ignores(relativePath)) {
-    return {
-      snippet: '',
-      wasIncluded: false,
-      defaultIgnored: true,
-      customIgnored: false,
-      isBinaryOrSvg: false,
-    };
-  }
-
-  // If custom ignore matches, skip
-  if (customIgnore.ignores(relativePath)) {
-    return {
-      snippet: '',
-      wasIncluded: false,
-      defaultIgnored: false,
-      customIgnored: true,
-      isBinaryOrSvg: false,
-    };
-  }
-
-  // Otherwise we attempt to read or treat as binary
-  // Check if it's text
-  const isText = await isTextFile(absolutePath);
-  const treatAsBinaryFile = shouldTreatAsBinary(absolutePath);
-
-  // (Optional) If you want to skip extremely large text files:
-  const fileStat = await fs.stat(absolutePath);
-  if (fileStat.size > MAX_SINGLE_FILE_SIZE && isText && !treatAsBinaryFile) {
-    // We'll skip it with a note
-    const skipSnippet = `# ${relativePath}\n\n(This text file is > ${(
-        MAX_SINGLE_FILE_SIZE /
-        1024 /
-        1024
-    ).toFixed(1)} MB, skipping content.)\n\n`;
-    return {
-      snippet: skipSnippet,
-      wasIncluded: true,
-      defaultIgnored: false,
-      customIgnored: false,
-      isBinaryOrSvg: false,
-    };
-  }
-
-  // Construct snippet
-  let snippet = '';
-  const displayPath = path.relative(process.cwd(), absolutePath);
-  if (isText && !treatAsBinaryFile) {
-    let content = await fs.readFile(absolutePath, 'utf-8');
-    const extension = path.extname(file);
-
-    content = escapeTripleBackticks(content);
-    if (removeWhitespaceFlag && !WHITESPACE_DEPENDENT_EXTENSIONS.includes(extension)) {
-      content = removeWhitespace(content);
+    if (absolutePath === outputFile) {
+      return {
+        snippet: '',
+        wasIncluded: false,
+        defaultIgnored: true,
+        customIgnored: false,
+        isBinaryOrSvg: false
+      };
     }
 
-    snippet += `# ${displayPath}\n\n`;
-    snippet += `\`\`\`${extension.slice(1)}\n`;
-    snippet += content;
-    snippet += `\n\`\`\`\n\n`;
+    const relativePath = file;
 
-    return {
-      snippet,
-      wasIncluded: true,
-      defaultIgnored: false,
-      customIgnored: false,
-      isBinaryOrSvg: false,
-    };
-  } else {
-    // Treat as binary or SVG
-    const fileType = getFileType(absolutePath);
-    snippet += `# ${displayPath}\n\n`;
-    if (fileType === 'SVG Image') {
-      snippet += `This is a file of the type: ${fileType}\n\n`;
+    if (useDefaultIgnores && defaultIgnore.ignores(relativePath)) {
+      return {
+        snippet: '',
+        wasIncluded: false,
+        defaultIgnored: true,
+        customIgnored: false,
+        isBinaryOrSvg: false
+      };
+    }
+
+    if (customIgnore.ignores(relativePath)) {
+      return {
+        snippet: '',
+        wasIncluded: false,
+        defaultIgnored: false,
+        customIgnored: true,
+        isBinaryOrSvg: false
+      };
+    }
+
+    const isText = await isTextFile(absolutePath);
+    const treatAsBinaryFile = shouldTreatAsBinary(absolutePath);
+
+    const fileStat = await fs.stat(absolutePath);
+    if (fileStat.size > MAX_SINGLE_FILE_SIZE && isText && !treatAsBinaryFile) {
+      return {
+        snippet: `# ${relativePath}\n\n(This text file is > ${(MAX_SINGLE_FILE_SIZE / 1024 / 1024).toFixed(1)} MB, skipping content.)\n\n`,
+        wasIncluded: true,
+        defaultIgnored: false,
+        customIgnored: false,
+        isBinaryOrSvg: false
+      };
+    }
+
+    let snippet = '';
+    const displayPath = path.relative(process.cwd(), absolutePath);
+    if (isText && !treatAsBinaryFile) {
+      let content = await fs.readFile(absolutePath, 'utf-8');
+      const extension = path.extname(file);
+
+      content = escapeTripleBackticks(content);
+      if (removeWhitespaceFlag && !WHITESPACE_DEPENDENT_EXTENSIONS.includes(extension)) {
+        content = removeWhitespace(content);
+      }
+
+      snippet += `# ${displayPath}\n\n`;
+      snippet += `\`\`\`${extension.slice(1)}\n`;
+      snippet += content;
+      snippet += `\n\`\`\`\n\n`;
+
+      return {
+        snippet,
+        wasIncluded: true,
+        defaultIgnored: false,
+        customIgnored: false,
+        isBinaryOrSvg: false
+      };
     } else {
-      snippet += `This is a binary file of the type: ${fileType}\n\n`;
-    }
+      const fileType = getFileType(absolutePath);
+      snippet += `# ${displayPath}\n\n`;
+      snippet += fileType === 'SVG Image' ? `This is a file of the type: ${fileType}\n\n` : `This is a binary file of the type: ${fileType}\n\n`;
 
+      return {
+        snippet,
+        wasIncluded: true,
+        defaultIgnored: false,
+        customIgnored: false,
+        isBinaryOrSvg: true
+      };
+    }
+  } catch (error) {
+    console.error(
+        formatLog(
+            `Error processing file ${file} in directory ${cwd}: ${(error as Error).message}`,
+            '❌'
+        )
+    );
     return {
-      snippet,
-      wasIncluded: true,
+      snippet: '',
+      wasIncluded: false,
       defaultIgnored: false,
       customIgnored: false,
-      isBinaryOrSvg: true,
+      isBinaryOrSvg: false
     };
   }
 }
@@ -232,20 +233,22 @@ async function aggregateFiles(
     ignoreFilePath: string
 ): Promise<void> {
   try {
-    // 1) Read ignore patterns
     const ignoreDir = path.dirname(ignoreFilePath);
     const ignoreName = path.basename(ignoreFilePath);
     const userIgnorePatterns = await readIgnoreFile(ignoreDir, ignoreName);
 
-    // 2) Build default & custom ignore sets
     const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
     const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
 
-    // Logging
-    if (useDefaultIgnores) {
-      console.log(formatLog('Using default ignore patterns.', '🚫'));
-    } else {
-      console.log(formatLog('Default ignore patterns disabled.', '✅'));
+    console.log(
+        formatLog(
+            useDefaultIgnores ? 'Using default ignore patterns.' : 'Default ignore patterns disabled.',
+            useDefaultIgnores ? '🚫' : '✅'
+        )
+    );
+    if (userIgnorePatterns.length > 0) {
+      console.log(formatLog(`Ignore patterns from ${ignoreName}:`, '📄'));
+      userIgnorePatterns.forEach((pattern) => console.log(`  - ${pattern}`));
     }
 
     if (removeWhitespaceFlag) {
@@ -259,23 +262,17 @@ async function aggregateFiles(
       console.log(formatLog('Whitespace removal disabled.', '📝'));
     }
 
-    // 3) Gather all files
     const allFiles = await gatherFiles(inputPaths);
     console.log(
         formatLog(`Found ${allFiles.length} file paths across all inputs. Applying filters...`, '🔍')
     );
 
-    // 4) Sort them in a natural path order
     allFiles.sort((a, b) => {
       const fullA = path.join(a.cwd, a.file);
       const fullB = path.join(b.cwd, b.file);
       return naturalSort(fullA, fullB);
     });
 
-    // 5) Optionally set up concurrency if desired
-    // const limit = pLimit(5);
-
-    // 6) Process each file (concurrently or sequentially)
     let includedCount = 0;
     let defaultIgnoredCount = 0;
     let customIgnoredCount = 0;
@@ -304,7 +301,7 @@ async function aggregateFiles(
     // Without concurrency:
     const results = [];
     for (const { cwd, file } of allFiles) {
-      const r = await processSingleFile(
+      const result = await processSingleFile(
           cwd,
           file,
           outputFile,
@@ -313,50 +310,30 @@ async function aggregateFiles(
           customIgnore,
           removeWhitespaceFlag
       );
-      results.push(r);
-    }
 
-    for (const {
-      snippet,
-      wasIncluded,
-      defaultIgnored,
-      customIgnored,
-      isBinaryOrSvg
-    } of results) {
-      if (defaultIgnored) defaultIgnoredCount++;
-      if (customIgnored) customIgnoredCount++;
-      if (wasIncluded) {
-        outputChunks.push(snippet);
-
-        // If snippet has a heading like `# something`, parse out the heading if you want
-        // but for clarity we can just do a quick approach:
-        // e.g. match "# relative/path" from snippet?
-        // We'll do a simpler approach: if snippet isn't empty, find the line after "# "
-        const match = snippet.match(/^# (.+)\n/m);
+      if (result.defaultIgnored) defaultIgnoredCount++;
+      if (result.customIgnored) customIgnoredCount++;
+      if (result.wasIncluded) {
+        outputChunks.push(result.snippet);
+        const match = result.snippet.match(/^# (.+)\n/m);
         if (match) {
           includedFiles.push(match[1].trim());
         }
-
         includedCount++;
-        if (isBinaryOrSvg) binaryAndSvgFileCount++;
+        if (result.isBinaryOrSvg) binaryAndSvgFileCount++;
       }
     }
 
-    // 7) Join final output
     const finalOutput = outputChunks.join('');
-
-    // 8) Write out the aggregated Markdown
     await fs.mkdir(path.dirname(outputFile), { recursive: true });
     await fs.writeFile(outputFile, finalOutput, { flag: 'w' });
 
-    // 9) Sanity check on file size
     const stats = await fs.stat(outputFile);
     const fileSizeInBytes = stats.size;
     if (fileSizeInBytes !== Buffer.byteLength(finalOutput)) {
       throw new Error('File size mismatch after writing');
     }
 
-    // Logging summary
     console.log(formatLog(`Files aggregated successfully into ${outputFile}`, '✅'));
     console.log(formatLog(`Total files found: ${allFiles.length}`, '📚'));
     console.log(formatLog(`Files included in output: ${includedCount}`, '📎'));
@@ -368,7 +345,6 @@ async function aggregateFiles(
     }
     console.log(formatLog(`Binary and SVG files included: ${binaryAndSvgFileCount}`, '📦'));
 
-    // Warn if final output is bigger than 10MB
     if (fileSizeInBytes > MAX_FILE_SIZE) {
       console.log(
           formatLog(
@@ -399,7 +375,9 @@ async function aggregateFiles(
 
     console.log(formatLog(`Done! Wrote code base to ${outputFile}`, '✅'));
   } catch (error) {
-    console.error(formatLog('Error aggregating files:', '❌'), error);
+    console.error(
+        formatLog(`Error aggregating files: ${(error as Error).message}`, '❌')
+    );
     process.exit(1);
   }
 }
@@ -415,21 +393,9 @@ program
     .option('--show-output-files', 'Display a list of files included in the output')
     .option('--ignore-file <file>', 'Custom ignore file name', '.aidigestignore')
     .action(async (options) => {
-      // If user didn't provide any --input, default to current working directory
-      let inputPaths: string[] = options.input;
-      if (!inputPaths || inputPaths.length === 0) {
-        inputPaths = [process.cwd()];
-      }
-
-      // Resolve the output file to absolute
-      const outputFile = path.isAbsolute(options.output)
-          ? options.output
-          : path.join(process.cwd(), options.output);
-
-      // If --ignore-file is relative, treat it as relative to CWD
-      const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile)
-          ? options.ignoreFile
-          : path.join(process.cwd(), options.ignoreFile);
+      let inputPaths: string[] = options.input || [process.cwd()];
+      const outputFile = path.isAbsolute(options.output) ? options.output : path.join(process.cwd(), options.output);
+      const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile) ? options.ignoreFile : path.join(process.cwd(), options.ignoreFile);
 
       await aggregateFiles(
           inputPaths,
