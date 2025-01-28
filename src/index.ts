@@ -161,6 +161,7 @@ async function processSingleFile(
 
   // Construct snippet
   let snippet = '';
+  const displayPath = path.relative(process.cwd(), absolutePath);
   if (isText && !treatAsBinaryFile) {
     let content = await fs.readFile(absolutePath, 'utf-8');
     const extension = path.extname(file);
@@ -170,7 +171,7 @@ async function processSingleFile(
       content = removeWhitespace(content);
     }
 
-    snippet += `# ${relativePath}\n\n`;
+    snippet += `# ${displayPath}\n\n`;
     snippet += `\`\`\`${extension.slice(1)}\n`;
     snippet += content;
     snippet += `\n\`\`\`\n\n`;
@@ -185,7 +186,7 @@ async function processSingleFile(
   } else {
     // Treat as binary or SVG
     const fileType = getFileType(absolutePath);
-    snippet += `# ${relativePath}\n\n`;
+    snippet += `# ${displayPath}\n\n`;
     if (fileType === 'SVG Image') {
       snippet += `This is a file of the type: ${fileType}\n\n`;
     } else {
