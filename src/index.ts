@@ -20,15 +20,18 @@ import {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
-async function readIgnoreFile(inputDir: string, filename: string): Promise<string[]> {
+/**
+ * Reads lines from an ignore file in `fileDir/fileName`. If it doesn't exist, return empty array.
+ */
+async function readIgnoreFile(fileDir: string, fileName: string): Promise<string[]> {
   try {
-    const filePath = path.join(inputDir, filename);
+    const filePath = path.join(fileDir, fileName);
     const content = await fs.readFile(filePath, 'utf-8');
-    console.log(formatLog(`Found ${filename} file in ${inputDir}.`, '📄'));
+    console.log(formatLog(`Found ${fileName} file in ${fileDir}.`, '📄'));
     return content.split('\n').filter(line => line.trim() !== '' && !line.startsWith('#'));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      console.log(formatLog(`No ${filename} file found in ${inputDir}.`, '❓'));
+      console.log(formatLog(`No ${fileName} file found in ${fileDir}.`, '❓'));
       return [];
     }
     throw error;
@@ -46,20 +49,28 @@ function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 
+/**
+ * Core aggregator that merges all files from `inputPaths` into one markdown file.
+ */
 async function aggregateFiles(
     inputPaths: string[],
     outputFile: string,
     useDefaultIgnores: boolean,
     removeWhitespaceFlag: boolean,
     showOutputFiles: boolean,
-    ignoreFile: string
+    ignoreFilePath: string
 ): Promise<void> {
   try {
-    // For now, read ignore file from process.cwd() (or you might pick the first directory in inputPaths, etc.)
-    const userIgnorePatterns = await readIgnoreFile(process.cwd(), ignoreFile);
+    // Break down the ignoreFilePath into (dir, filename)
+    // so we can properly load it.
+    const ignoreDir = path.dirname(ignoreFilePath);
+    const ignoreName = path.basename(ignoreFilePath);
+
+    // Read patterns from the given file (absolute or relative to cwd).
+    const userIgnorePatterns = await readIgnoreFile(ignoreDir, ignoreName);
 
     const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
-    const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreFile);
+    const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
 
     if (useDefaultIgnores) {
       console.log(formatLog('Using default ignore patterns.', '🚫'));
@@ -102,8 +113,7 @@ async function aggregateFiles(
 
     console.log(formatLog(`Found ${allFiles.length} file paths across all inputs. Applying filters...`, '🔍'));
 
-    // Next, sort them in a natural path order.
-    // We'll create a "combined path" for sorting, but keep the {cwd,file} structure for reading.
+    // Sort all discovered files in a natural path order
     allFiles.sort((a, b) => {
       const fullA = path.join(a.cwd, a.file);
       const fullB = path.join(b.cwd, b.file);
@@ -117,48 +127,53 @@ async function aggregateFiles(
     let binaryAndSvgFileCount = 0;
     let includedFiles: string[] = [];
 
+    // Process each file
     for (const { cwd, file } of allFiles) {
-      // This is the absolute location:
       const absolutePath = path.join(cwd, file);
 
-      // 1) Use 'file' itself as your "relative" path to feed into ignore()
-      //    because 'file' is already relative to 'cwd' from glob.
+      // We'll feed the relative path (relative to that cwd) into 'ignore()'
+      // so it doesn't have "../.." segments.
       const relativePath = file;
 
-      // 2) If you need to check “is this the output file?”, compare absolutes:
+      // If this file is literally the output file, skip
       if (absolutePath === outputFile) {
         defaultIgnoredCount++;
         continue;
       }
 
-      // 3) Use the *relative-to-cwd* path for ignoring
+      // If default ignore is on and matches, skip
       if (useDefaultIgnores && defaultIgnore.ignores(relativePath)) {
         defaultIgnoredCount++;
         continue;
       }
 
+      // If custom ignore matches, skip
       if (customIgnore.ignores(relativePath)) {
         customIgnoredCount++;
         continue;
       }
 
-      // If not ignored, read or mark as binary
+      // If not ignored, proceed:
       if (await isTextFile(absolutePath) && !shouldTreatAsBinary(absolutePath)) {
         let content = await fs.readFile(absolutePath, 'utf-8');
         const extension = path.extname(file);
 
         content = escapeTripleBackticks(content);
+
         if (removeWhitespaceFlag && !WHITESPACE_DEPENDENT_EXTENSIONS.includes(extension)) {
           content = removeWhitespace(content);
         }
 
+        // Write to aggregated output
         output += `# ${relativePath}\n\n`;
         output += `\`\`\`${extension.slice(1)}\n`;
         output += content;
         output += '\n\`\`\`\n\n';
+
         includedCount++;
         includedFiles.push(relativePath);
       } else {
+        // Treat as binary (or SVG)
         const fileType = getFileType(absolutePath);
         output += `# ${relativePath}\n\n`;
         if (fileType === 'SVG Image') {
@@ -172,19 +187,22 @@ async function aggregateFiles(
       }
     }
 
-    // Write out the final markdown
+    // Finally, write out the aggregated Markdown
     await fs.mkdir(path.dirname(outputFile), { recursive: true });
     await fs.writeFile(outputFile, output, { flag: 'w' });
 
+    // Sanity check on file size
     const stats = await fs.stat(outputFile);
     const fileSizeInBytes = stats.size;
     if (stats.size !== Buffer.byteLength(output)) {
       throw new Error('File size mismatch after writing');
     }
 
+    // Summaries
     console.log(formatLog(`Files aggregated successfully into ${outputFile}`, '✅'));
     console.log(formatLog(`Total files found: ${allFiles.length}`, '📚'));
     console.log(formatLog(`Files included in output: ${includedCount}`, '📎'));
+
     if (useDefaultIgnores) {
       console.log(formatLog(`Files ignored by default patterns: ${defaultIgnoredCount}`, '🚫'));
     }
@@ -226,35 +244,42 @@ async function aggregateFiles(
   }
 }
 
+// --------------------- CLI Definition with Commander --------------------- //
 program
-  .version('1.0.0')
-  .description('Aggregate files into a single Markdown file')
-  .option('-i, --input <paths...>', 'Input file(s) or folder(s)')
-  .option('-o, --output <file>', 'Output file name', 'codebase.md')
-  .option('--no-default-ignores', 'Disable default ignore patterns')
-  .option('--whitespace-removal', 'Enable whitespace removal')
-  .option('--show-output-files', 'Display a list of files included in the output')
-  .option('--ignore-file <file>', 'Custom ignore file name', '.aidigestignore')
-  .action(async (options) => {
-    let inputPaths: string[] = options.input;
+    .version('1.0.0')
+    .description('Aggregate files into a single Markdown file')
+    .option('-i, --input <paths...>', 'Input file(s) or folder(s)')
+    .option('-o, --output <file>', 'Output file name', 'codebase.md')
+    .option('--no-default-ignores', 'Disable default ignore patterns')
+    .option('--whitespace-removal', 'Enable whitespace removal')
+    .option('--show-output-files', 'Display a list of files included in the output')
+    .option('--ignore-file <file>', 'Custom ignore file name', '.aidigestignore')
+    .action(async (options) => {
+      let inputPaths: string[] = options.input;
 
-    // If user didn't provide any --input flags, default to current working directory
-    if (!inputPaths || inputPaths.length === 0) {
-      inputPaths = [process.cwd()];
-    }
+      // If user didn't provide any --input, default to current working directory
+      if (!inputPaths || inputPaths.length === 0) {
+        inputPaths = [process.cwd()];
+      }
 
-    const outputFile = path.isAbsolute(options.output)
-        ? options.output
-        : path.join(process.cwd(), options.output);
+      // Resolve the output file to absolute
+      const outputFile = path.isAbsolute(options.output)
+          ? options.output
+          : path.join(process.cwd(), options.output);
 
-    await aggregateFiles(
-        inputPaths,
-        outputFile,
-        options.defaultIgnores,
-        options.whitespaceRemoval,
-        options.showOutputFiles,
-        options.ignoreFile
-    );
-  });
+      // If --ignore-file is relative, treat it as relative to CWD
+      const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile)
+          ? options.ignoreFile
+          : path.join(process.cwd(), options.ignoreFile);
+
+      await aggregateFiles(
+          inputPaths,
+          outputFile,
+          options.defaultIgnores,
+          options.whitespaceRemoval,
+          options.showOutputFiles,
+          ignoreFileAbsolute
+      );
+    });
 
 program.parse(process.argv);

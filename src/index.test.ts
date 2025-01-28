@@ -3,13 +3,14 @@ import { promisify } from "util";
 import path from "path";
 import fs from 'fs/promises';
 import os from 'os';
+import {ExecOptions} from "node:child_process";
 
 const execAsync = promisify(exec);
 
-const runCLI = async (args: string = "") => {
+async function runCLI(args: string = "", opts: ExecOptions = {}) {
   const cliPath = path.resolve(__dirname, "index.ts");
-  return execAsync(`ts-node ${cliPath} ${args}`);
-};
+  return execAsync(`ts-node ${cliPath} ${args}`, opts);
+}
 
 describe("AI Digest CLI", () => {
   afterAll(async () => {
@@ -130,7 +131,11 @@ describe("AI Digest CLI", () => {
       await fs.writeFile(path.join(tempDir, 'custom.ignore'), '*.js');
 
       // Run the CLI with the custom ignore file
-      const { stdout } = await runCLI(`--input ${tempDir} --ignore-file custom.ignore --show-output-files`);
+      // const { stdout } = await runCLI(`--input ${tempDir} --ignore-file custom.ignore --show-output-files`);
+      const { stdout } = await runCLI(
+          `--input ${tempDir} --ignore-file custom.ignore --show-output-files`,
+          { cwd: tempDir }  // <--- ensures process.cwd() == tempDir
+      );
 
       // Check if the output contains only the files we want to include
       expect(stdout).toContain('include.txt');
@@ -140,8 +145,7 @@ describe("AI Digest CLI", () => {
       expect(stdout).toContain('Ignore patterns from custom.ignore:');
       expect(stdout).toContain('  - *.js');
 
-      // Read the generated codebase.md file
-      const codebasePath = path.resolve(process.cwd(), "codebase.md");
+      const codebasePath = path.join(tempDir, "codebase.md");
       const content = await fs.readFile(codebasePath, 'utf-8');
 
       // Verify the content of codebase.md
