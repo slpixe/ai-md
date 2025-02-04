@@ -1,8 +1,8 @@
-import { Ignore } from "ignore";
 import { isBinaryFile } from "isbinaryfile";
 import { encodingForModel } from "js-tiktoken";
 import path from 'path';
 import winston from 'winston';
+import ignore, { type Ignore } from 'ignore';
 
 // Setup Winston logger
 const logger = winston.createLogger({
@@ -124,8 +124,7 @@ export function escapeTripleBackticks(content: string): string {
 }
 
 export function createIgnoreFilter(ignorePatterns: string[], ignoreFile: string): Ignore {
-  const ig = require("ignore")().add(ignorePatterns);
-  return ig; // Logging moved to index.ts
+  return ignore().add(ignorePatterns);
 }
 
 export function estimateTokenCount(text: string): number {
