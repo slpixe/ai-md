@@ -362,7 +362,7 @@ async function aggregateFiles(
           '💡 Consider adding more files to ignore patterns to reduce the output size.'
       );
     } else {
-      const tokenCount = estimateTokenCount(finalOutput);
+      const tokenCount = await estimateTokenCount(finalOutput);
       logger.info(`🔢 Estimated token count: ${tokenCount}`);
       logger.info(
           '⚠️ Note: Token count is an approximation using GPT-4 tokenizer. ' +

@@ -127,13 +127,15 @@ export function createIgnoreFilter(ignorePatterns: string[], ignoreFile: string)
   return ignore().add(ignorePatterns);
 }
 
-export function estimateTokenCount(text: string): number {
+export async function estimateTokenCount(text: string): Promise<number> {
   try {
+    // Instead of a static `import { encodingForModel } from 'js-tiktoken';`
+    // do a dynamic import to forcibly load the ESM build:
+    const { encodingForModel } = await import('js-tiktoken');
     const enc = encodingForModel("gpt-4o");
-    const tokens = enc.encode(text);
-    return tokens.length;
+    return enc.encode(text).length;
   } catch (error) {
-    logger.error("Error estimating token count:", error);
+    console.error("Error estimating token count:", error);
     return 0;
   }
 }
