@@ -18,4 +18,9 @@ describe("AI Digest CLI", () => {
     const { stdout } = await runCLI();
     expect(stdout).toMatch(/Files aggregated successfully into .*codebase\.md/);
   }, 10000);
+
+  it("should respect custom output file", async () => {
+    const { stdout } = await runCLI("-o custom_output.md");
+    expect(stdout).toMatch(/Files aggregated successfully into .*custom_output\.md/);
+  }, 10000);
 });
