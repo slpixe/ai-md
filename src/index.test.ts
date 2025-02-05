@@ -43,4 +43,13 @@ describe("AI Digest CLI", () => {
     expect(stdout).toContain("📄 Ignore patterns from .aidigestignore:");
     expect(stdout).toContain("🚫 Files ignored by custom patterns: 1");
   }, 10000);
+
+  it("should remove whitespace when flag is set", async () => {
+    const testFile = path.join(tempDir, "test.txt");
+    await fs.writeFile(testFile, "This  is   a    test");
+    await runCLI(`--input ${tempDir} --whitespace-removal`);
+    const codebasePath = path.join(tempDir, "codebase.md");
+    const content = await fs.readFile(codebasePath, 'utf-8');
+    expect(content).toContain("This is a test");
+  }, 10000);
 });
