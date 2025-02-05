@@ -52,12 +52,16 @@ describe("AI Digest CLI", () => {
     expect(stdout).toContain("Files included in the output:");
   }, 10000);
 
-  it.skip("should include SVG file with correct type in codebase.md", async () => {
-    await runCLI();
+  it("should include SVG file with correct type in codebase.md", async () => {
+    const svgFile = path.join(tempDir, "smiley.svg");
+    await fs.writeFile(svgFile, "<svg></svg>");
+
+    await runCLI(`--input ${tempDir}`);
+
     const codebasePath = path.join(tempDir, "codebase.md");
     const content = await fs.readFile(codebasePath, 'utf-8');
 
-    expect(content).toContain("# test/smiley.svg");
+    expect(content).toContain("smiley.svg");
     expect(content).toContain("This is a file of the type: SVG Image");
   }, 10000);
 
