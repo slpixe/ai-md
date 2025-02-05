@@ -46,31 +46,13 @@ For best results, re-upload the Markdown file before starting a new chat session
 1. Basic usage:
 
    ```bash
-   npx ai-txt
+   npx @slpixe/ai-txt
    ```
 
-2. Specify input and output:
+2. Specify input with options:
 
    ```bash
-   npx ai-txt -i /path/to/your/project -o project_summary.md
-   ```
-
-3. Enable whitespace removal:
-
-   ```bash
-   npx ai-txt --whitespace-removal
-   ```
-
-4. Show list of included files:
-
-   ```bash
-   npx ai-txt --show-output-files
-   ```
-
-5. Combine multiple options:
-
-   ```bash
-   npx ai-txt -i /path/to/your/project -o project_summary.md --whitespace-removal --show-output-files
+   npx @slpixe/ai-txt --whitespace-removal --show-output-files -i a -i b/a.txt
    ```
 
 ## Custom Ignore Patterns
@@ -90,7 +72,9 @@ Binary files and SVGs are included in the output with a note about their file ty
 
 ## Local Development
 
-Run `npm run start` to run the CLI tool on the local project. (Very meta!)
+Run `npm run start` to run the CLI tool on the local project.
+
+Run `npx --prefix ~/{path-to-project}} ai-txt --show-output-files -i {folder1}` to test against the local build
 
 Run `npm test` to run the tests.
 
@@ -101,10 +85,6 @@ To pass flags to the CLI, use the `--` flag, like this: `npm run start -- --whit
 ```
 npm publish
 ```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
