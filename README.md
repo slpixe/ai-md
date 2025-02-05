@@ -76,6 +76,8 @@ Run `npm run start` to run the CLI tool on the local project.
 
 Run `npx --prefix ~/{path-to-project}} ai-txt --show-output-files -i {folder1}` to test against the local build
 
+Note: sometimes `chmod +x dist/index.js` might need to be used to allow the script to execute locally
+
 Run `npm test` to run the tests.
 
 To pass flags to the CLI, use the `--` flag, like this: `npm run start -- --whitespace-removal`.
