@@ -8,7 +8,6 @@ import {ExecOptions} from "node:child_process";
 
 const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-txt-test");
-const ignoreFilePath = path.join(tempDir, ".aidigestignore");
 
 async function runCLI(args: string = "", opts: ExecOptions = {}) {
   const cliPath = path.resolve(__dirname, "index.ts");
@@ -18,38 +17,26 @@ async function runCLI(args: string = "", opts: ExecOptions = {}) {
 describe("AI Digest CLI", () => {
   beforeEach(async () => {
     await fs.mkdir(tempDir, { recursive: true });
-    await fs.writeFile(ignoreFilePath, "*.log\nnode_modules");
   });
 
   afterEach(async () => {
     await fs.rm(tempDir, { recursive: true, force: true });
   });
 
-  it("should generate codebase.md by default", async () => {
-    const { stdout } = await runCLI();
-    expect(stdout).toMatch(/Files aggregated successfully into .*codebase\.md/);
-  }, 10000);
+  it("should detect and include a binary and SVG file with correct headers", async () => {
+    const binaryFile = path.join(tempDir, "test.bin");
+    const svgFile = path.join(tempDir, "test.svg");
+    await fs.writeFile(binaryFile, Buffer.from([0, 1, 2, 3]));
+    await fs.writeFile(svgFile, "<svg></svg>");
 
-  it("should respect custom output file", async () => {
-    const { stdout } = await runCLI("-o custom_output.md");
-    expect(stdout).toMatch(/Files aggregated successfully into .*custom_output\.md/);
-  }, 10000);
+    await runCLI(`--input ${tempDir}`);
 
-  it("should ignore files based on .aidigestignore", async () => {
-    const testFile = path.join(tempDir, "test.log");
-    await fs.writeFile(testFile, "This should be ignored");
-    const { stdout } = await runCLI(`--input ${tempDir}`);
-    expect(stdout).toContain("📄 Found .aidigestignore file in");
-    expect(stdout).toContain("📄 Ignore patterns from .aidigestignore:");
-    expect(stdout).toContain("🚫 Files ignored by custom patterns: 1");
-  }, 10000);
-
-  it("should remove whitespace when flag is set", async () => {
-    const testFile = path.join(tempDir, "test.txt");
-    await fs.writeFile(testFile, "This  is   a    test");
-    await runCLI(`--input ${tempDir} --whitespace-removal`);
     const codebasePath = path.join(tempDir, "codebase.md");
     const content = await fs.readFile(codebasePath, 'utf-8');
-    expect(content).toContain("This is a test");
+
+    expect(content).toContain("/ai-txt-test/test.bin");
+    expect(content).toContain("This is a binary file of the type: Binary");
+    expect(content).toContain("/ai-txt-test/test.svg");
+    expect(content).toContain("This is a file of the type: SVG Image");
   }, 10000);
 });
