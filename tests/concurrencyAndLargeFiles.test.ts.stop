@@ -1,0 +1,32 @@
+/*
+Purpose: Ensures large files are skipped properly, and concurrency does not cause corruption.
+ */
+
+import { describe, it, expect } from "vitest";
+import { exec } from "child_process";
+import { promisify } from "util";
+import path from "path";
+import fs from "fs/promises";
+import os from "os";
+
+const execAsync = promisify(exec);
+const tempDir = path.join(os.tmpdir(), "ai-txt-test");
+
+async function runCLI(args: string = "") {
+	const cliPath = path.resolve(__dirname, "../src/index.ts");
+	return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+}
+
+describe("Concurrency & Large Files", () => {
+	it("should skip large text files", async () => {
+		const largeFile = path.join(tempDir, "large.txt");
+		await fs.writeFile(largeFile, "a".repeat(6 * 1024 * 1024)); // 6MB
+		const { stdout } = await runCLI(`--input ${tempDir}`);
+		expect(stdout).toContain("(This text file is > 5 MB, skipping content.)");
+	});
+
+	it("should run without corruption when --concurrent is enabled", async () => {
+		const { stdout } = await runCLI("--concurrent");
+		expect(stdout).toContain("✅ Files aggregated successfully");
+	});
+});
