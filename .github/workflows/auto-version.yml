@@ -31,6 +31,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install global dependencies
+        run: npm install -g tsx
+
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'
