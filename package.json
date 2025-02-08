@@ -1,5 +1,5 @@
 {
-  "name": "@slpixe/ai-md",
+  "name": "ai-md",
   "version": "1.2.0",
   "description": "CLI tool to aggregate files into a single Markdown file",
   "main": "dist/index.js",
@@ -52,9 +52,10 @@
     "url": "https://github.com/slpixe/ai-md/issues"
   },
   "publishConfig": {
-    "registry": "https://npm.jsr.io"
+    "registry": "https://npm.jsr.io/@slpixe/ai-md"
   },
   "jsr": {
+    "name": "@slpixe/ai-md",
     "namespace": "slpixe"
   }
 }

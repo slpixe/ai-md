@@ -18,7 +18,7 @@ ai-md scans your project directory, applies default and custom ignore patterns, 
 
 You can run the CLI tool using these methods:
 
-Run directly with JSR:
+Using JSR (recommended):
 ```bash
 # Using npx
 npx jsr run @slpixe/ai-md
@@ -27,16 +27,16 @@ npx jsr run @slpixe/ai-md
 jsr run @slpixe/ai-md
 ```
 
-Install globally:
+Using npm:
 ```bash
-# Using npx
-npx jsr install -g @slpixe/ai-md
+# Run directly
+npx ai-md
 
-# Using JSR CLI
-jsr install -g @slpixe/ai-md
+# Install globally
+npm install -g ai-md
 ```
 
-After global installation, you can run it anywhere with:
+After installation, you can run it anywhere with:
 ```bash
 ai-md
 ```
@@ -60,13 +60,13 @@ This generates a `codebase.md` file containing your aggregated codebase.
 1. Basic usage:
 
    ```bash
-   npx @slpixe/ai-md
+   npx ai-md
    ```
 
 2. With specific options and custom inputs:
 
    ```bash
-   npx @slpixe/ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
+   npx ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
    ```
 
 ## Custom Ignore Patterns
@@ -117,12 +117,12 @@ Binary files and SVG images are included with a short note about their file type
 
 You can publish to both npm and JSR:
 
-For npm:
+For npm (as ai-md):
 ```bash
 npm publish
 ```
 
-For JSR:
+For JSR (as @slpixe/ai-md):
 ```bash
 # Using npx
 npx jsr publish
@@ -131,7 +131,7 @@ npx jsr publish
 jsr publish
 ```
 
-Make sure to update both package.json and jsr.json version numbers before publishing.
+Make sure to update version numbers in both package.json and jsr.json before publishing.
 
 ## License
 
