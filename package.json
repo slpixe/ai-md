@@ -18,7 +18,9 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "local-run": "npx ai-md --whitespace-removal --show-output-files",
-    "publish": "npm publish --access public"
+    "publish": "npm publish --access public",
+    "version": "node scripts/sync-version.js && git add jsr.json",
+    "preversion": "npm test"
   },
   "keywords": [
     "cli",
