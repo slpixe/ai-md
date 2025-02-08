@@ -1,6 +1,10 @@
-# @slpixe/ai-md
+# @slpixe/ai-md (JSR) | ai-txt (NPM)
 
 A CLI tool to aggregate your codebase into a single Markdown file for easier review with AI models.
+
+Available on:
+- JSR: [jsr.io/@slpixe/ai-md](https://jsr.io/@slpixe/ai-md)
+- NPM: [npmjs.com/package/ai-txt](https://www.npmjs.com/package/ai-txt)
 
 ## Overview
 
@@ -20,25 +24,21 @@ You can run the CLI tool using these methods:
 
 Using JSR (recommended):
 ```bash
-# Using npx
+# Using npx with JSR
 npx jsr run @slpixe/ai-md
 
-# Using JSR CLI
+# Using JSR CLI directly
 jsr run @slpixe/ai-md
 ```
 
 Using npm:
 ```bash
-# Run directly
-npx ai-md
+# Run directly with NPM
+npx ai-txt
 
 # Install globally
-npm install -g ai-md
-```
-
-After installation, you can run it anywhere with:
-```bash
-ai-md
+npm install -g ai-txt
+ai-md  # Command name remains ai-md for consistency
 ```
 
 This generates a `codebase.md` file containing your aggregated codebase.
@@ -60,7 +60,11 @@ This generates a `codebase.md` file containing your aggregated codebase.
 1. Basic usage:
 
    ```bash
-   npx ai-md
+   # Using NPM package
+   npx ai-txt
+   
+   # Using JSR package
+   npx jsr run @slpixe/ai-md
    ```
 
 2. With specific options and custom inputs:
@@ -113,25 +117,28 @@ Binary files and SVG images are included with a short note about their file type
   npm run build
   ```
 
+## Package Updates
+
+For manual dependency updates:
+```bash
+# Check available updates
+npx npm-check-updates
+
+# Interactive mode (recommended)
+npx npm-check-updates -i
+
+# Update all dependencies
+npx npm-check-updates -u && npm install
+```
+
+Alternatively, enable Renovate in your repository for automated dependency updates:
+1. Install [Renovate App](https://github.com/apps/renovate) from GitHub Marketplace
+2. Add to your repository
+3. Renovate will automatically create a PR with its base configuration
+
 ## Deploy New Version
 
-You can publish to both npm and JSR:
-
-For npm (as ai-md):
-```bash
-npm publish
-```
-
-For JSR (as @slpixe/ai-md):
-```bash
-# Using npx
-npx jsr publish
-
-# Using JSR cli
-jsr publish
-```
-
-Make sure to update version numbers in both package.json and jsr.json before publishing.
+Deployments to both NPM and JSR are handled automatically via GitHub Actions when changes are pushed to the main/master branch.
 
 ## License
 
