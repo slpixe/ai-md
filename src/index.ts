@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import {program} from 'commander';
 import {promises as fs} from 'fs';
 import path from 'path';
 import {glob} from 'glob';
@@ -424,40 +423,5 @@ async function aggregateFiles(
 	}
 }
 
-/**
- * Attach CLI logic to Commander
- */
-program
-	.version('1.0.0')
-	.description('Aggregate files into a single Markdown file')
-	.option('-i, --input <paths...>', 'Input file(s) or folder(s)')
-	.option('-o, --output <file>', 'Output file name', 'codebase.md')
-	.option('--no-default-ignores', 'Disable default ignore patterns')
-	.option('--whitespace-removal', 'Enable whitespace removal')
-	.option('--show-output-files', 'Display a list of files included in the output')
-	.option('--ignore-file <file>', 'Custom ignore file name', '.aidigestignore')
-	.option('--concurrent', 'Enable concurrency for processing files')
-	.option('--dry-run', 'Show which files would be included but do not write the file')
-	.action(async (options) => {
-		const inputPaths = options.input || [process.cwd()];
-		const outputFile = path.isAbsolute(options.output)
-			? options.output
-			: path.join(process.cwd(), options.output);
-
-		const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile)
-			? options.ignoreFile
-			: path.join(process.cwd(), options.ignoreFile);
-
-		await aggregateFiles(
-			inputPaths,
-			outputFile,
-			options.defaultIgnores,
-			options.whitespaceRemoval,
-			options.showOutputFiles,
-			ignoreFileAbsolute,
-			options.concurrent,
-			options.dryRun
-		);
-	});
-
-program.parse(process.argv);
+export { aggregateFiles };
+export { default as cli } from './cli.js';

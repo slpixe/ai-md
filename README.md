@@ -19,6 +19,12 @@ ai-md scans your project directory, applies default and custom ignore patterns, 
 Run the CLI tool in your project directory using npx to always get the latest version:
 
 ```bash
+npx jsr run @slpixe/ai-md
+```
+
+Or using npm (JSR-compatible):
+
+```bash
 npx @slpixe/ai-md
 ```
 

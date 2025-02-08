@@ -50,5 +50,11 @@
   },
   "bugs": {
     "url": "https://github.com/slpixe/ai-md/issues"
+  },
+  "publishConfig": {
+    "registry": "https://npm.jsr.io"
+  },
+  "jsr": {
+    "namespace": "slpixe"
   }
 }
