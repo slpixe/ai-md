@@ -12,7 +12,7 @@ import os from "os";
 import {ExecOptions} from "node:child_process";
 
 const execAsync = promisify(exec);
-const tempDir = path.join(os.tmpdir(), "ai-txt-test");
+const tempDir = path.join(os.tmpdir(), "ai-md-test");
 
 async function runCLI(args: string = "", opts: ExecOptions = {}) {
 	const cliPath = path.resolve(__dirname, "../src/index.ts");

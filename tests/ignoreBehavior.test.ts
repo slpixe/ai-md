@@ -10,7 +10,7 @@ import fs from "fs/promises";
 import os from "os";
 
 const execAsync = promisify(exec);
-const tempDir = path.join(os.tmpdir(), "ai-txt-test-ignore-behavior");
+const tempDir = path.join(os.tmpdir(), "ai-md-test-ignore-behavior");
 const ignoreFilePath = path.join(tempDir, ".aidigestignore");
 
 async function runCLI(args: string = "") {

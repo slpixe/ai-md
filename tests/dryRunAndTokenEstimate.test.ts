@@ -6,7 +6,7 @@ import fs from "fs/promises";
 import os from "os";
 
 const execAsync = promisify(exec);
-const tempDir = path.join(os.tmpdir(), "ai-txt-test-dry-token");
+const tempDir = path.join(os.tmpdir(), "ai-md-test-dry-token");
 
 async function runCLI(args: string = "") {
 	const cliPath = path.resolve(__dirname, "../src/index.ts");

@@ -1,11 +1,11 @@
 {
-  "name": "@slpixe/ai-txt",
+  "name": "@slpixe/ai-md",
   "version": "1.1.5",
   "description": "CLI tool to aggregate files into a single Markdown file",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "ai-txt": "dist/index.js"
+    "ai-md": "dist/index.js"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -17,7 +17,7 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "local-run": "npx ai-txt --whitespace-removal --show-output-files",
+    "local-run": "npx ai-md --whitespace-removal --show-output-files",
     "publish": "npm publish --access public"
   },
   "keywords": [
@@ -43,12 +43,12 @@
     "p-limit": "^6.2.0",
     "winston": "^3.17.0"
   },
-  "homepage": "https://github.com/slpixe/ai-txt#readme",
+  "homepage": "https://github.com/slpixe/ai-md#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/slpixe/ai-txt.git"
+    "url": "git+https://github.com/slpixe/ai-md.git"
   },
   "bugs": {
-    "url": "https://github.com/slpixe/ai-txt/issues"
+    "url": "https://github.com/slpixe/ai-md/issues"
   }
 }

@@ -1,10 +1,10 @@
-# @slpixe/ai-txt
+# @slpixe/ai-md
 
 A CLI tool to aggregate your codebase into a single Markdown file for easier review with AI models.
 
 ## Overview
 
-ai-txt scans your project directory, applies default and custom ignore patterns, and merges files into a formatted Markdown output. It handles text, binary, and SVG files appropriately.
+ai-md scans your project directory, applies default and custom ignore patterns, and merges files into a formatted Markdown output. It handles text, binary, and SVG files appropriately.
 
 ## Features
 
@@ -19,7 +19,7 @@ ai-txt scans your project directory, applies default and custom ignore patterns,
 Run the CLI tool in your project directory using npx to always get the latest version:
 
 ```bash
-npx @slpixe/ai-txt
+npx @slpixe/ai-md
 ```
 
 This generates a `codebase.md` file containing your aggregated codebase.
@@ -41,13 +41,13 @@ This generates a `codebase.md` file containing your aggregated codebase.
 1. Basic usage:
 
    ```bash
-   npx @slpixe/ai-txt
+   npx @slpixe/ai-md
    ```
 
 2. With specific options and custom inputs:
 
    ```bash
-   npx @slpixe/ai-txt --whitespace-removal --show-output-files -i /src/Components -i README.md
+   npx @slpixe/ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
    ```
 
 ## Custom Ignore Patterns
@@ -56,7 +56,7 @@ Place a `.aidigestignore` file in your project root to customize which files or 
 
 ## Whitespace Removal
 
-When the `--whitespace-removal` flag is enabled, ai-txt removes extra whitespace to reduce the token count for AI models. Note that files in whitespace-dependent languages (e.g., Python, YAML) are excluded from this process.
+When the `--whitespace-removal` flag is enabled, ai-md removes extra whitespace to reduce the token count for AI models. Note that files in whitespace-dependent languages (e.g., Python, YAML) are excluded from this process.
 
 ## Binary and SVG File Handling
 
@@ -71,12 +71,12 @@ Binary files and SVG images are included with a short note about their file type
 
 - If built (after `npm run build`), you can run:
   ```bash
-  npx ai-txt
+  npx ai-md
   ```
 
 - For local testing with a specific build directory and custom inputs, run:
   ```bash
-  npx --prefix ~/{ai-txt-directory} ai-txt --whitespace-removal --show-output-files -i /src/Components -i README.md
+  npx --prefix ~/{ai-md-directory} ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
   ```
 
 - If you encounter permission issues, you might need to set execution permissions:
