@@ -14,12 +14,29 @@ on:
 
 permissions:
   contents: write
-  statuses: write
-  pull-requests: write
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install global dependencies
+        run: npm install -g tsx
+
+      - name: Run tests
+        run: npm test
+
   version:
-    name: test  # Name this job 'test' to match required check
+    needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     steps:
@@ -36,90 +53,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install global dependencies
-        run: npm install -g tsx
-
-      - name: Run tests
-        id: tests
-        run: npm test
-
       - name: Configure Git
-        if: success()
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Create version on temp branch
-        if: success()
-        id: version
+      - name: Bump version
         run: |
-          # Create and checkout temp branch
-          TEMP_BRANCH="version-$(date +%s)"
-          git checkout -b $TEMP_BRANCH
-          
-          # Create version commit on temp branch
+          # Create version bump commit
           npm version ${{ github.event.inputs.version-type }} --no-git-tag-version --ignore-scripts
           NEW_VERSION=$(node -p "require('./package.json').version")
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           
           git add package.json package-lock.json
           git commit -m "chore(release): v$NEW_VERSION"
+          git tag v$NEW_VERSION
           
-          # Push temp branch
-          git push origin $TEMP_BRANCH
-          echo "temp_branch=$TEMP_BRANCH" >> $GITHUB_OUTPUT
-
-      # Create PR and merge using GitHub API
-      - name: Create and merge PR
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            // Create PR
-            const pr = await github.rest.pulls.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: 'chore(release): v${{ steps.version.outputs.new_version }}',
-              head: '${{ steps.version.outputs.temp_branch }}',
-              base: '${{ github.ref_name }}',
-              body: 'Automated version bump'
-            });
-
-            // Wait for checks to complete
-            await new Promise(r => setTimeout(r, 5000));
-
-            // Set status check on PR head commit
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: pr.data.head.sha,
-              state: 'success',
-              context: 'test',
-              description: 'Tests passed'
-            });
-
-            // Wait for status to propagate
-            await new Promise(r => setTimeout(r, 5000));
-
-            // Merge PR
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.data.number,
-              merge_method: 'squash'
-            });
-
-      # Create and push tag
-      - name: Create and push tag
-        if: success()
-        run: |
-          git fetch
-          git checkout ${{ github.ref_name }}
-          git pull
-          git tag v${{ steps.version.outputs.new_version }}
-          git push origin v${{ steps.version.outputs.new_version }}
-
-      # Cleanup temp branch
-      - name: Cleanup
-        if: always()
-        run: git push origin --delete ${{ steps.version.outputs.temp_branch }} || true
+          git push
+          git push --tags
