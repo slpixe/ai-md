@@ -13,7 +13,7 @@ const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-concurrency-large");
 
 async function runCLI(args: string = "") {
-	const cliPath = path.resolve(__dirname, "../src/index.ts");
+	const cliPath = path.resolve(__dirname, "../src/cli.ts");
 	return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
 }
 
