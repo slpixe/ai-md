@@ -1,6 +1,6 @@
 {
   "name": "@slpixe/ai-md",
-  "version": "1.1.5",
+  "version": "1.2.0",
   "description": "CLI tool to aggregate files into a single Markdown file",
   "main": "dist/index.js",
   "type": "module",
