@@ -16,5 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: npm ci
+#        instead of npm install
+
       - name: Publish package
         run: npx jsr publish
