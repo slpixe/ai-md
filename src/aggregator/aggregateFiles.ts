@@ -26,17 +26,21 @@ export async function aggregateFiles(
 	dryRun: boolean,
 	verbose: boolean
 ): Promise<void> {
-	try {
-		const startTime = Date.now();
+try {
+const startTime = Date.now();
+logger.debug('Starting file aggregation process');
 
 		// 1) Load custom ignore patterns
 		const ignoreDir = path.dirname(ignoreFilePath);
 		const ignoreName = path.basename(ignoreFilePath);
 		const userIgnorePatterns = await readIgnoreFile(ignoreDir, ignoreName);
 
-		// 2) Setup default vs custom ignore
-		const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
-		const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
+// 2) Setup default vs custom ignore
+const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
+const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
+
+logger.debug(`Default ignore patterns: ${useDefaultIgnores ? DEFAULT_IGNORES.join(', ') : 'disabled'}`);
+logger.debug(`Custom ignore patterns from ${ignoreName}: ${userIgnorePatterns.join(', ') || 'none'}`);
 
 		logger.info(
 			useDefaultIgnores
@@ -55,11 +59,15 @@ export async function aggregateFiles(
 		}
 
 		// 3) Gather all files
-		const allFiles = await gatherFiles(inputPaths);
+		const gatherStartTime = Date.now();
+const allFiles = await gatherFiles(inputPaths);
+const gatherEndTime = Date.now();
+logger.debug(`File gathering took ${gatherEndTime - gatherStartTime}ms`);
 		logger.info(`🔍 Found ${allFiles.length} file paths across all inputs. Applying filters...`);
 
-		// 4) Sort them in natural order
-		allFiles.sort((a, b) => {
+// 4) Sort them in natural order
+logger.debug('Sorting files in natural order');
+allFiles.sort((a, b) => {
 			const fullA = path.join(a.cwd, a.file);
 			const fullB = path.join(b.cwd, b.file);
 			return naturalSort(fullA, fullB);
@@ -73,11 +81,13 @@ export async function aggregateFiles(
 			concurrencyLevel = 4;
 		}
 
-		if (concurrencyLevel > 0) {
-			logger.info(`🔄 Using concurrent processing with ${concurrencyLevel} workers`);
-		} else {
-			logger.info('🔄 Running sequentially (no concurrency)');
-		}
+if (concurrencyLevel > 0) {
+logger.info(`🔄 Using concurrent processing with ${concurrencyLevel} workers`);
+logger.debug(`Concurrency enabled: ${concurrencyLevel} simultaneous file operations`);
+} else {
+logger.info('🔄 Running sequentially (no concurrency)');
+logger.debug('Concurrency disabled: processing files sequentially');
+}
 
 		const limit = concurrencyLevel > 0 ? pLimit(concurrencyLevel) : null;
 
@@ -108,8 +118,12 @@ export async function aggregateFiles(
 			}
 		};
 
-		// 6) Process all files
-		const results = await Promise.all(allFiles.map(processFile));
+// 6) Process all files
+const processingStartTime = Date.now();
+logger.debug('Starting file processing');
+const results = await Promise.all(allFiles.map(processFile));
+const processingEndTime = Date.now();
+logger.debug(`File processing took ${processingEndTime - processingStartTime}ms`);
 
 		// 7) Aggregate results
 		const outputChunks: string[] = [];
@@ -137,15 +151,23 @@ export async function aggregateFiles(
 			}
 		}
 
-		// 8) Build final output text
-		const finalOutput = outputChunks.join('');
+// 8) Build final output text
+logger.debug('Building final output text');
+const finalOutput = outputChunks.join('');
+logger.debug(`Final output size: ${(Buffer.byteLength(finalOutput) / 1024).toFixed(2)}KB`);
 
 		// 9) Write the file unless it's a dry run
 		let fileSizeInBytes = Buffer.byteLength(finalOutput);
-		if (!dryRun) {
-			// Actually write the file
-			await fs.mkdir(path.dirname(outputFile), {recursive: true});
-			await fs.writeFile(outputFile, finalOutput, {flag: 'w'});
+if (!dryRun) {
+// Actually write the file
+logger.debug(`Creating output directory: ${path.dirname(outputFile)}`);
+await fs.mkdir(path.dirname(outputFile), {recursive: true});
+
+logger.debug('Writing output file');
+const writeStartTime = Date.now();
+await fs.writeFile(outputFile, finalOutput, {flag: 'w'});
+const writeEndTime = Date.now();
+logger.debug(`File writing took ${writeEndTime - writeStartTime}ms`);
 
 			// Verify correct file size on disk
 			const stats = await fs.stat(outputFile);
@@ -198,8 +220,11 @@ export async function aggregateFiles(
 			logger.info('✅ Done (dry run). No file was created.');
 		}
 		logger.info(`⏱️  Aggregation took ${elapsed} ms`);
-	} catch (error) {
-		logger.error(`❌ Error aggregating files: ${(error as Error).message}`);
+} catch (error) {
+const errorMessage = (error as Error).message;
+const errorStack = (error as Error).stack;
+logger.error(`❌ Error aggregating files: ${errorMessage}`);
+logger.debug(`Error stack trace: ${errorStack}`);
 		process.exit(1);
 	}
 }
