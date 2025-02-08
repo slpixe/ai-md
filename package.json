@@ -1,5 +1,5 @@
 {
-  "name": "ai-md",
+  "name": "ai-txt",
   "version": "1.2.0",
   "description": "CLI tool to aggregate files into a single Markdown file",
   "main": "dist/index.js",
