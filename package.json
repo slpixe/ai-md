@@ -14,7 +14,7 @@
     "build": "tsc",
     "start": "tsx src/index.ts",
     "prepublishOnly": "npm run build",
-    "test": "vitest",
+    "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "local-run": "npx ai-md --whitespace-removal --show-output-files",
