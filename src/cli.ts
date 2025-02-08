@@ -17,9 +17,8 @@ const cli: Command = program
     .option('--dry-run', 'Show what would be done without making changes')
     .option('--verbose', 'Show debug-level logs')
     .action(async (options) => {
-        if (options.verbose) {
-            updateLoggerLevel(true);
-        }
+        // Always call updateLoggerLevel with the verbose flag state
+        updateLoggerLevel(!!options.verbose);
 
         const inputPaths = options.input || [process.cwd()];
         const outputFile = path.isAbsolute(options.output)
@@ -44,8 +43,7 @@ const cli: Command = program
             options.showOutputFiles,
             ignoreFileAbsolute,
             concurrentValue ?? false,
-            options.dryRun,
-            options.verbose
+            options.dryRun
         );
     });
 
