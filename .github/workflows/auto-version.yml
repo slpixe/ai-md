@@ -13,34 +13,17 @@ on:
           - major
 
 jobs:
-  test:
-    name: test  # This name matches the required status check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-      - name: Install dependencies
-        run: npm ci
-      - name: Install global dependencies
-        run: npm install -g tsx
-      - name: Run tests
-        run: npm test
-
   version:
-    needs: test  # Wait for test job to complete
+    name: test  # Name this job 'test' to match the required check
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: write
-      statuses: write  # Allow setting commit statuses
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref }}  # Explicitly checkout the target branch
+          ref: ${{ github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,13 +32,18 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install global dependencies
+        run: npm install -g tsx
+
+      - name: Run tests
+        run: npm test
 
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      # Update SHA to latest before pushing
       - name: Update to latest
         run: git pull --rebase
 
@@ -68,7 +56,8 @@ jobs:
           
           # Create tag for the new version
           git tag v$(node -p "require('./package.json').version")
-          
-          # Push changes
+
+      - name: Push Changes
+        run: |
           git push
           git push --tags
