@@ -255,7 +255,7 @@ async function aggregateFiles(
 	removeWhitespaceFlag: boolean,
 	showOutputFiles: boolean,
 	ignoreFilePath: string,
-	enableConcurrency: boolean,
+	enableConcurrency: boolean | number,
 	dryRun: boolean
 ): Promise<void> {
 	try {
@@ -297,8 +297,21 @@ async function aggregateFiles(
 			return naturalSort(fullA, fullB);
 		});
 
-		// 5) Concurrency setup
-		const limit = enableConcurrency ? pLimit(5) : null;
+// 5) Concurrency setup
+let concurrencyLevel = 0;
+if (enableConcurrency && typeof enableConcurrency === 'number') {
+    concurrencyLevel = enableConcurrency;
+} else if (enableConcurrency) {
+    concurrencyLevel = 4;
+}
+
+if (concurrencyLevel > 0) {
+    logger.info(`🔄 Using concurrent processing with ${concurrencyLevel} workers`);
+} else {
+    logger.info('🔄 Running sequentially (no concurrency)');
+}
+
+const limit = concurrencyLevel > 0 ? pLimit(concurrencyLevel) : null;
 
 		// Wrap file-processing in concurrency logic if set
 		const processFile = async (fileObj: { cwd: string; file: string }) => {

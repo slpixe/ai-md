@@ -18,9 +18,17 @@ async function runCLI(args: string = "") {
 }
 
 describe("Concurrency & Large Files", () => {
-	beforeEach(async () => {
-		await fs.mkdir(tempDir, {recursive: true});
-	});
+beforeEach(async () => {
+  await fs.mkdir(tempDir, {recursive: true});
+  
+  // Create multiple test files
+  for (let i = 1; i <= 10; i++) {
+    await fs.writeFile(
+      path.join(tempDir, `test${i}.txt`),
+      `Content for file ${i}\n`.repeat(100)
+    );
+  }
+});
 
 	afterEach(async () => {
 		await fs.rm(tempDir, {recursive: true, force: true});
@@ -43,8 +51,44 @@ describe("Concurrency & Large Files", () => {
 		expect(content).toContain("(This text file is > 5.0 MB, skipping content.)");
 	});
 
-	it("should run without corruption when --concurrent is enabled", async () => {
-		const { stdout } = await runCLI("--concurrent");
-		expect(stdout).toContain("✅ Files aggregated successfully");
-	});
+describe("concurrent processing", () => {
+  it("should run sequentially when --concurrent is not used", async () => {
+    const { stdout } = await runCLI(`--input ${tempDir} --show-output-files`);
+    expect(stdout).toContain("✅ Files aggregated successfully");
+    expect(stdout).toContain("🔄 Running sequentially (no concurrency)");
+    
+    // Verify all files were processed
+    const codebasePath = path.join(tempDir, "codebase.md");
+    const content = await fs.readFile(codebasePath, "utf-8");
+    for (let i = 1; i <= 10; i++) {
+      expect(content).toContain(`test${i}.txt`);
+    }
+  });
+
+  it("should use default concurrency (4) when --concurrent is used without value", async () => {
+    const { stdout } = await runCLI(`--input ${tempDir} --concurrent --show-output-files`);
+    expect(stdout).toContain("✅ Files aggregated successfully");
+    expect(stdout).toContain("🔄 Using concurrent processing with 4 workers");
+    
+    // Verify all files were processed
+    const codebasePath = path.join(tempDir, "codebase.md");
+    const content = await fs.readFile(codebasePath, "utf-8");
+    for (let i = 1; i <= 10; i++) {
+      expect(content).toContain(`test${i}.txt`);
+    }
+  });
+
+  it("should use specified concurrency when value is provided", async () => {
+    const { stdout } = await runCLI(`--input ${tempDir} --concurrent 8 --show-output-files`);
+    expect(stdout).toContain("✅ Files aggregated successfully");
+    expect(stdout).toContain("🔄 Using concurrent processing with 8 workers");
+    
+    // Verify all files were processed
+    const codebasePath = path.join(tempDir, "codebase.md");
+    const content = await fs.readFile(codebasePath, "utf-8");
+    for (let i = 1; i <= 10; i++) {
+      expect(content).toContain(`test${i}.txt`);
+    }
+  });
+});
 });
