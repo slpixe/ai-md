@@ -34,7 +34,6 @@
   "devDependencies": {
     "@types/node": "^22",
     "@vitest/coverage-v8": "^3.0.5",
-    "gpt-tokenizer": "^2.8.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
@@ -42,9 +41,9 @@
   "dependencies": {
     "commander": "^13.1.0",
     "glob": "^11.0.1",
+    "gpt-tokenizer": "^2.8.1",
     "ignore": "^7.0.3",
     "isbinaryfile": "^5.0.4",
-    "js-tiktoken": "^1.0.18",
     "p-limit": "^6.2.0",
     "winston": "^3.17.0"
   },
