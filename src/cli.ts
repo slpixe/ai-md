@@ -15,6 +15,7 @@ const cli: Command = program
     .option('--show-output-files', 'Show output files being processed')
     .option('--concurrent [number]', 'Number of concurrent file processing (default: 4)')
     .option('--dry-run', 'Show what would be done without making changes')
+    .option('--verbose', 'Show debug-level logs')
     .action(async (options) => {
         const inputPaths = options.input || [process.cwd()];
         const outputFile = path.isAbsolute(options.output)
@@ -41,7 +42,8 @@ const cli: Command = program
             options.showOutputFiles,
             ignoreFileAbsolute,
             concurrentValue ?? false,
-            options.dryRun
+            options.dryRun,
+            options.verbose
         );
     });
 
