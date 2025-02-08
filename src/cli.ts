@@ -7,7 +7,14 @@ import { aggregateFiles } from './index.js';
 const cli: Command = program
     .version('1.0.0')
     .description('Aggregate files into a single Markdown file')
-    // ...existing commander options...
+    .option('-i, --input <paths...>', 'Input file/directory paths')
+    .option('-o, --output <path>', 'Output file path', 'codebase.md')
+    .option('--ignore-file <path>', 'Path to ignore file', '.aidigestignore')
+    .option('--no-default-ignores', 'Disable default ignore patterns')
+    .option('--whitespace-removal', 'Remove unnecessary whitespace')
+    .option('--show-output-files', 'Show output files being processed')
+    .option('--concurrent <number>', 'Number of concurrent file processing')
+    .option('--dry-run', 'Show what would be done without making changes')
     .action(async (options) => {
         const inputPaths = options.input || [process.cwd()];
         const outputFile = path.isAbsolute(options.output)
@@ -31,3 +38,8 @@ const cli: Command = program
     });
 
 export default cli;
+
+// Auto-execute if this is the entry point
+if (import.meta.url === new URL(import.meta.resolve('./cli.js')).href) {
+    cli.parse(process.argv);
+}
