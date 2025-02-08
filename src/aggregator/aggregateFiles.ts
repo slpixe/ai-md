@@ -23,8 +23,7 @@ export async function aggregateFiles(
 	showOutputFiles: boolean,
 	ignoreFilePath: string,
 	enableConcurrency: boolean | number,
-	dryRun: boolean,
-	verbose: boolean
+dryRun: boolean
 ): Promise<void> {
 try {
 const startTime = Date.now();
