@@ -14,16 +14,31 @@ on:
 
 jobs:
   version:
-    name: test  # Name this job 'test' to match the required check
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: write
+      actions: write
+      checks: write
+      statuses: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ github.ref }}
+          token: ${{ secrets.WORKFLOW_PAT }}  # Need a PAT with workflow permissions
+
+      # Trigger test workflow and wait for it
+      - name: Trigger tests
+        uses: convictional/trigger-workflow-and-wait@v1.6.1
+        with:
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.event.repository.name }}
+          github_token: ${{ secrets.WORKFLOW_PAT }}  # Need a PAT with workflow permissions
+          workflow_file_name: test.yml
+          wait_interval: 10
+          trigger_workflow: true
+          wait_workflow: true
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,12 +47,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Install global dependencies
-        run: npm install -g tsx
-
-      - name: Run tests
-        run: npm test
 
       - name: Configure Git
         run: |
@@ -58,6 +67,9 @@ jobs:
           git tag v$(node -p "require('./package.json').version")
 
       - name: Push Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.WORKFLOW_PAT }}
         run: |
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git
           git push
           git push --tags

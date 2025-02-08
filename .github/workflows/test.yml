@@ -1,5 +1,6 @@
 name: Run Tests
 on:
+  workflow_dispatch:  # Allow manual trigger
   push:
     branches:
       - main
@@ -11,15 +12,57 @@ on:
       
 jobs:
   test:
+    name: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}  # Explicitly checkout the triggering commit
+
       - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Install global dependencies
+        run: npm install -g tsx
+
       - name: Run tests
         run: npm test
+
+      # Set commit status
+      - name: Set Success Status
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'success',
+              context: 'test',
+              description: 'Tests passed successfully'
+            });
+
+      # Set failure status if tests fail
+      - name: Set Failure Status
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'failure',
+              context: 'test',
+              description: 'Tests failed'
+            });
