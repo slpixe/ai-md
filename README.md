@@ -1,45 +1,40 @@
-# ai-txt
+# @slpixe/ai-txt
 
-A CLI tool to aggregate your codebase into a single Markdown file for use with Claude Projects or custom ChatGPTs.
+A CLI tool to aggregate your codebase into a single Markdown file for easier review with AI models.
+
+## Overview
+
+ai-txt scans your project directory, applies default and custom ignore patterns, and merges files into a formatted Markdown output. It handles text, binary, and SVG files appropriately.
 
 ## Features
 
-- Aggregates all files in the specified directory and subdirectories
-- Ignores common build artifacts and configuration files
-- Outputs a single Markdown file containing the whole codebase
-- Provides options for whitespace removal and custom ignore patterns
+- Recursively aggregates files from folders.
+- Supports default and custom ignore patterns.
+- Optional whitespace removal (except for whitespace-dependent languages).
+- Includes notes for binary and SVG files.
+- Concurrency support for faster processing.
 
-## How to Use
+## Usage
 
-Start by running the CLI tool in your project directory:
+Run the CLI tool in your project directory using npx to always get the latest version:
 
 ```bash
-npx ai-txt
+npx @slpixe/ai-txt
 ```
 
-This will generate a `codebase.md` file with your codebase.
-
-Once you've generated the Markdown file containing your codebase, you can use it with AI models like ChatGPT and Claude for code analysis and assistance.
-
-### With ChatGPT:
-1. Create a Custom GPT
-2. Upload the generated Markdown file to the GPT's knowledge base
-
-### With Claude:
-1. Create a new Project
-2. Add the Markdown file to the Project's knowledge
-
-For best results, re-upload the Markdown file before starting a new chat session to ensure the AI has the most up-to-date version of your codebase.
+This generates a `codebase.md` file containing your aggregated codebase.
 
 ## Options
 
-- `-i, --input <directory>`: Specify input directory (default: current directory)
-- `-o, --output <file>`: Specify output file (default: codebase.md)
+- `-i, --input <paths...>`: Input file(s) or directory(ies) (default: current directory)
+- `-o, --output <file>`: Output Markdown file (default: codebase.md)
 - `--no-default-ignores`: Disable default ignore patterns
-- `--whitespace-removal`: Enable whitespace removal
-- `--show-output-files`: Display a list of files included in the output
+- `--whitespace-removal`: Enable removal of excess whitespace
+- `--show-output-files`: Display names of included files
 - `--ignore-file <file>`: Specify a custom ignore file (default: .aidigestignore)
-- `--help`: Show help
+- `--concurrent`: Enable concurrency for file processing
+- `--dry-run`: Perform a dry run without writing the output file
+- `--help`: Show this help message
 
 ## Examples
 
@@ -49,42 +44,61 @@ For best results, re-upload the Markdown file before starting a new chat session
    npx @slpixe/ai-txt
    ```
 
-2. Specify input with options:
+2. With specific options and custom inputs:
 
    ```bash
-   npx @slpixe/ai-txt --whitespace-removal --show-output-files -i a -i b/a.txt
+   npx @slpixe/ai-txt --whitespace-removal --show-output-files -i /src/Components -i README.md
    ```
 
 ## Custom Ignore Patterns
 
-ai-txt supports custom ignore patterns using a `.aidigestignore` file in the root directory of your project. This file works similarly to `.gitignore`, allowing you to specify files and directories that should be excluded from the aggregation.
-
-Use the `--show-output-files` flag to see which files are being included, making it easier to identify candidates for exclusion.
-
+Place a `.aidigestignore` file in your project root to customize which files or directories to exclude. The syntax works similarly to `.gitignore`.
 
 ## Whitespace Removal
 
-When using the `--whitespace-removal` flag, ai-txt removes excess whitespace from files to reduce the token count when used with AI models. This feature is disabled for whitespace-dependent languages like Python and YAML.
+When the `--whitespace-removal` flag is enabled, ai-txt removes extra whitespace to reduce the token count for AI models. Note that files in whitespace-dependent languages (e.g., Python, YAML) are excluded from this process.
 
 ## Binary and SVG File Handling
 
-Binary files and SVGs are included in the output with a note about their file type. This allows AI models to be aware of these files without including their full content.
+Binary files and SVG images are included with a short note about their file type rather than full content, ensuring that file structure is maintained without unnecessary bulk.
 
-## Local Development
+## Development
 
-Run `npm run start` to run the CLI tool on the local project.
+- To run locally with full CLI options, use:
+  ```bash
+  npm run start
+  ```
 
-Run `npx --prefix ~/{path-to-project}} ai-txt --show-output-files -i {folder1}` to test against the local build
+- If built (after `npm run build`), you can run:
+  ```bash
+  npx ai-txt
+  ```
 
-Note: sometimes `chmod +x dist/index.js` might need to be used to allow the script to execute locally
+- For local testing with a specific build directory and custom inputs, run:
+  ```bash
+  npx --prefix ~/{ai-txt-directory} ai-txt --whitespace-removal --show-output-files -i /src/Components -i README.md
+  ```
 
-Run `npm test` to run the tests.
+- If you encounter permission issues, you might need to set execution permissions:
+  ```bash
+  chmod +x dist/index.js
+  ```
 
-To pass flags to the CLI, use the `--` flag, like this: `npm run start -- --whitespace-removal`.
+- For testing, execute:
+  ```bash
+  npm test
+  ```
+
+- To build the project before publishing:
+  ```bash
+  npm run build
+  ```
 
 ## Deploy New Version
 
-```
+Publish a new version with:
+
+```bash
 npm publish
 ```
 
