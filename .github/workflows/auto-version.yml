@@ -14,7 +14,7 @@ on:
 
 jobs:
   test:
-    name: test
+    name: test  # This name matches the required status check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,15 +30,17 @@ jobs:
         run: npm test
 
   version:
-    needs: test
+    needs: test  # Wait for test job to complete
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: write
+      statuses: write  # Allow setting commit statuses
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.ref }}  # Explicitly checkout the target branch
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -53,11 +55,20 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
+      # Update SHA to latest before pushing
+      - name: Update to latest
+        run: git pull --rebase
+
       - name: Bump version
         run: |
+          # Create the version bump commit
           npm version ${{ github.event.inputs.version-type }} --no-git-tag-version --ignore-scripts
           git add package.json package-lock.json
           git commit -m "chore(release): v$(node -p "require('./package.json').version")"
+          
+          # Create tag for the new version
           git tag v$(node -p "require('./package.json').version")
+          
+          # Push changes
           git push
           git push --tags
