@@ -15,6 +15,7 @@ on:
 jobs:
   version:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
       contents: write
     steps:
