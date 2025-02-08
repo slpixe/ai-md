@@ -13,7 +13,23 @@ on:
           - major
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+      - name: Install dependencies
+        run: npm ci
+      - name: Install global dependencies
+        run: npm install -g tsx
+      - name: Run tests
+        run: npm test
+
   version:
+    needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     permissions:
@@ -31,9 +47,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install global dependencies
-        run: npm install -g tsx
-
       - name: Configure Git
         run: |
           git config --global user.name 'github-actions[bot]'
@@ -41,6 +54,9 @@ jobs:
 
       - name: Bump version
         run: |
-          npm version ${{ github.event.inputs.version-type }} -m "chore(release): %s"
+          npm version ${{ github.event.inputs.version-type }} --no-git-tag-version --ignore-scripts
+          git add package.json package-lock.json
+          git commit -m "chore(release): v$(node -p "require('./package.json').version")"
+          git tag v$(node -p "require('./package.json').version")
           git push
           git push --tags
