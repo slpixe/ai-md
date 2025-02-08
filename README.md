@@ -16,10 +16,29 @@ ai-md scans your project directory, applies default and custom ignore patterns, 
 
 ## Usage
 
-Run the CLI tool in your project directory using npx to always get the latest version:
+You can run the CLI tool using these methods:
 
+Using JSR (recommended):
 ```bash
-npx @slpixe/ai-md
+# Using npx
+npx jsr run @slpixe/ai-md
+
+# Using JSR CLI
+jsr run @slpixe/ai-md
+```
+
+Using npm:
+```bash
+# Run directly
+npx ai-md
+
+# Install globally
+npm install -g ai-md
+```
+
+After installation, you can run it anywhere with:
+```bash
+ai-md
 ```
 
 This generates a `codebase.md` file containing your aggregated codebase.
@@ -41,13 +60,13 @@ This generates a `codebase.md` file containing your aggregated codebase.
 1. Basic usage:
 
    ```bash
-   npx @slpixe/ai-md
+   npx ai-md
    ```
 
 2. With specific options and custom inputs:
 
    ```bash
-   npx @slpixe/ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
+   npx ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
    ```
 
 ## Custom Ignore Patterns
@@ -96,11 +115,23 @@ Binary files and SVG images are included with a short note about their file type
 
 ## Deploy New Version
 
-Publish a new version with:
+You can publish to both npm and JSR:
 
+For npm (as ai-md):
 ```bash
 npm publish
 ```
+
+For JSR (as @slpixe/ai-md):
+```bash
+# Using npx
+npx jsr publish
+
+# Using JSR cli
+jsr publish
+```
+
+Make sure to update version numbers in both package.json and jsr.json before publishing.
 
 ## License
 
