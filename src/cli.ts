@@ -10,6 +10,7 @@ const cli: Command = program
     .option('-i, --input <paths...>', 'Input file/directory paths')
     .option('-o, --output <path>', 'Output file path', 'codebase.md')
     .option('--ignore-file <path>', 'Path to ignore file', '.aidigestignore')
+    .option('--ignore <pattern>', 'Additional ignore patterns (can be used multiple times)', (val: string, prev: string[]) => [...prev, val], [])
     .option('--no-default-ignores', 'Disable default ignore patterns')
     .option('--whitespace-removal', 'Remove unnecessary whitespace')
     .option('--show-output-files', 'Show output files being processed')
@@ -43,7 +44,8 @@ const cli: Command = program
             options.showOutputFiles,
             ignoreFileAbsolute,
             concurrentValue ?? false,
-            options.dryRun
+            options.dryRun,
+            options.ignore
         );
     });
 

@@ -14,8 +14,9 @@ export async function processSingleFile(
 	outputFile: string,
 	useDefaultIgnores: boolean,
 	defaultIgnore: ignore.Ignore,
-	customIgnore: ignore.Ignore,
-	removeWhitespaceFlag: boolean
+customIgnore: ignore.Ignore,
+cliIgnore: ignore.Ignore,
+removeWhitespaceFlag: boolean
 ): Promise<{
 	snippet: string;
 	wasIncluded: boolean;
@@ -41,8 +42,13 @@ return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: f
 
 if (customIgnore.ignores(relativePath)) {
 logger.debug(`File ignored by custom patterns: ${relativePath}`);
-			return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false };
-		}
+return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false };
+}
+
+if (cliIgnore.ignores(relativePath)) {
+logger.debug(`File ignored by CLI patterns: ${relativePath}`);
+return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false };
+}
 
 const isText = await isTextFile(absolutePath);
 const treatAsBinaryFile = shouldTreatAsBinary(absolutePath);
