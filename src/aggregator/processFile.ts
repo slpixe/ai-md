@@ -5,24 +5,26 @@ import { DEFAULT_IGNORES } from '../utils/constants.js';
 import ignore from 'ignore';
 import { logger } from "../utils/logger.js";
 import { escapeTripleBackticks, removeWhitespace } from "../utils/textUtils.js";
+import { estimateTokenCount } from "../utils/tokenUtils.js";
 
 const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export async function processSingleFile(
-	cwd: string,
-	file: string,
-	outputFile: string,
-	useDefaultIgnores: boolean,
-	defaultIgnore: ignore.Ignore,
+cwd: string,
+file: string,
+outputFile: string,
+useDefaultIgnores: boolean,
+defaultIgnore: ignore.Ignore,
 customIgnore: ignore.Ignore,
 cliIgnore: ignore.Ignore,
 removeWhitespaceFlag: boolean
 ): Promise<{
-	snippet: string;
-	wasIncluded: boolean;
-	defaultIgnored: boolean;
-	customIgnored: boolean;
-	isBinaryOrSvg: boolean;
+snippet: string;
+wasIncluded: boolean;
+defaultIgnored: boolean;
+customIgnored: boolean;
+isBinaryOrSvg: boolean;
+tokenCount: number;
 }> {
 try {
 const absolutePath = path.join(cwd, file);
@@ -30,24 +32,24 @@ logger.debug(`Processing file: ${absolutePath}`);
 
 if (absolutePath === outputFile) {
 logger.debug(`Skipping output file: ${outputFile}`);
-			return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false };
-		}
+return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false, tokenCount: 0 };
+}
 
-		const relativePath = file;
+const relativePath = file;
 
 if (useDefaultIgnores && defaultIgnore.ignores(relativePath)) {
 logger.debug(`File ignored by default patterns: ${relativePath}`);
-return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false };
+return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false, tokenCount: 0 };
 }
 
 if (customIgnore.ignores(relativePath)) {
 logger.debug(`File ignored by custom patterns: ${relativePath}`);
-return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false };
+return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false, tokenCount: 0 };
 }
 
 if (cliIgnore.ignores(relativePath)) {
 logger.debug(`File ignored by CLI patterns: ${relativePath}`);
-return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false };
+return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: true, isBinaryOrSvg: false, tokenCount: 0 };
 }
 
 const isText = await isTextFile(absolutePath);
@@ -59,25 +61,27 @@ logger.debug(`File stats for ${relativePath}:
   - Is text file: ${isText}
   - Treat as binary: ${treatAsBinaryFile}`);
 
-		if (fileStat.size > MAX_SINGLE_FILE_SIZE && isText && !treatAsBinaryFile) {
+if (fileStat.size > MAX_SINGLE_FILE_SIZE && isText && !treatAsBinaryFile) {
 logger.debug(`File exceeds size limit (${(MAX_SINGLE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB): ${relativePath}`);
-			return {
-				snippet: `# ${relativePath}\n\n(This text file is > ${(MAX_SINGLE_FILE_SIZE / 1024 / 1024).toFixed(1)} MB, skipping content.)\n\n`,
-				wasIncluded: true,
-				defaultIgnored: false,
-				customIgnored: false,
-				isBinaryOrSvg: false
-			};
-		}
+const snippet = `# ${relativePath}\n\n(This text file is > ${(MAX_SINGLE_FILE_SIZE / 1024 / 1024).toFixed(1)} MB, skipping content.)\n\n`;
+return {
+snippet,
+wasIncluded: true,
+defaultIgnored: false,
+customIgnored: false,
+isBinaryOrSvg: false,
+tokenCount: estimateTokenCount(snippet)
+};
+}
 
-		let snippet = '';
-		const displayPath = path.relative(process.cwd(), absolutePath);
+let snippet = '';
+const displayPath = path.relative(process.cwd(), absolutePath);
 
-		if (isText && !treatAsBinaryFile) {
+if (isText && !treatAsBinaryFile) {
 logger.debug(`Processing text file: ${relativePath}`);
-			let content = await fs.readFile(absolutePath, 'utf-8');
-			const extension = path.extname(file);
-			content = escapeTripleBackticks(content);
+let content = await fs.readFile(absolutePath, 'utf-8');
+const extension = path.extname(file);
+content = escapeTripleBackticks(content);
 
 if (removeWhitespaceFlag && !['.py', '.yaml', /* other extensions */].includes(extension)) {
 const originalLength = content.length;
@@ -88,21 +92,42 @@ logger.debug(`Whitespace removal for ${relativePath}:
   - Chars removed: ${originalLength - content.length}`);
 }
 
-			snippet += `# ${displayPath}\n\n\`\`\`${extension.slice(1)}\n${content}\n\`\`\`\n\n`;
-			return { snippet, wasIncluded: true, defaultIgnored: false, customIgnored: false, isBinaryOrSvg: false };
-		} else {
-			const fileType = getFileType(absolutePath);
-			snippet += `# ${displayPath}\n\n`;
-			snippet += fileType === 'SVG Image'
-				? `This is a file of the type: ${fileType}\n\n`
-				: `This is a binary file of the type: ${fileType}\n\n`;
-			return { snippet, wasIncluded: true, defaultIgnored: false, customIgnored: false, isBinaryOrSvg: true };
-		}
+snippet += `# ${displayPath}\n\n\`\`\`${extension.slice(1)}\n${content}\n\`\`\`\n\n`;
+return {
+snippet,
+wasIncluded: true,
+defaultIgnored: false,
+customIgnored: false,
+isBinaryOrSvg: false,
+tokenCount: estimateTokenCount(content)
+};
+} else {
+const fileType = getFileType(absolutePath);
+snippet += `# ${displayPath}\n\n`;
+snippet += fileType === 'SVG Image'
+? `This is a file of the type: ${fileType}\n\n`
+: `This is a binary file of the type: ${fileType}\n\n`;
+return {
+snippet,
+wasIncluded: true,
+defaultIgnored: false,
+customIgnored: false,
+isBinaryOrSvg: true,
+tokenCount: 10 // Fixed token count for binary/SVG files
+};
+}
 } catch (error) {
 const errorMessage = (error as Error).message;
 const errorStack = (error as Error).stack;
 logger.error(`❌ Error processing file ${file} in directory ${cwd}: ${errorMessage}`);
 logger.debug(`Error stack trace: ${errorStack}`);
-		return { snippet: '', wasIncluded: false, defaultIgnored: false, customIgnored: false, isBinaryOrSvg: false };
-	}
+return {
+snippet: '',
+wasIncluded: false,
+defaultIgnored: false,
+customIgnored: false,
+isBinaryOrSvg: false,
+tokenCount: 0
+};
+}
 }

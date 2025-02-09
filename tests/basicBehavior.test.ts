@@ -41,7 +41,7 @@ describe("Basic Behavior", () => {
 	it("should respect the --input flag", async () => {
 		const testFile = path.join(tempDir, "test.txt");
 		await fs.writeFile(testFile, "Test content");
-		const {stdout} = await runCLI(`--input ${tempDir} --show-output-files`);
+		const {stdout} = await runCLI(`--input ${tempDir} --show-files`);
 		expect(stdout).toContain("test.txt");
 	});
 });

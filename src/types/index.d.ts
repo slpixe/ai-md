@@ -3,10 +3,17 @@ export interface FileObject {
 	file: string;
 }
 
+export interface FileTokenInfo {
+  path: string;
+  tokenCount: number;
+  percentage: number;
+}
+
 export interface ProcessFileResult {
-	snippet: string;
-	wasIncluded: boolean;
-	defaultIgnored: boolean;
-	customIgnored: boolean;
-	isBinaryOrSvg: boolean;
+  snippet: string;
+  wasIncluded: boolean;
+  defaultIgnored: boolean;
+  customIgnored: boolean;
+  isBinaryOrSvg: boolean;
+  tokenCount: number;
 }
