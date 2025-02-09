@@ -103,8 +103,5 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --ignore-scripts --access public
 
-      - name: Setup JSR CLI
-        run: npm install -g @jsrdev/cli
-
       - name: Publish to JSR
-        run: jsr publish
+        run: npx jsr publish
