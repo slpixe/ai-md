@@ -13,10 +13,11 @@ const cli: Command = program
     .option('--ignore <pattern>', 'Additional ignore patterns (can be used multiple times)', (val: string, prev: string[]) => [...prev, val], [])
     .option('--no-default-ignores', 'Disable default ignore patterns')
     .option('--whitespace-removal', 'Remove unnecessary whitespace')
-    .option('--show-output-files', 'Show output files being processed')
-    .option('--concurrent [number]', 'Number of concurrent file processing (default: 4)')
-    .option('--dry-run', 'Show what would be done without making changes')
-    .option('--verbose', 'Show debug-level logs')
+    .option('-f, --show-files', 'Show output files being processed')
+    .option('-t, --show-tokens', 'Show token count analysis for each file')
+    .option('-c, --concurrent [number]', 'Number of concurrent file processing (default: 4)')
+    .option('-d, --dry-run', 'Show what would be done without making changes')
+    .option('-v, --verbose', 'Show debug-level logs')
     .action(async (options) => {
         // Always call updateLoggerLevel with the verbose flag state
         updateLoggerLevel(!!options.verbose);
@@ -41,11 +42,12 @@ const cli: Command = program
             outputFile,
             options.defaultIgnores,
             options.whitespaceRemoval,
-            options.showOutputFiles,
+            options.showFiles,
             ignoreFileAbsolute,
             concurrentValue ?? false,
             options.dryRun,
-            options.ignore
+            options.ignore,
+            options.showTokens
         );
     });
 

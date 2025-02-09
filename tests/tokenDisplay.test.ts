@@ -45,7 +45,7 @@ describe("Token Display", () => {
   });
 
   it("should show token counts and percentages", async () => {
-    const { stdout } = await runCLI("--show-output-files");
+    const { stdout } = await runCLI("--show-tokens");
     
     // Verify token analysis table is present
     expect(stdout).toContain("📊 Token analysis:");
@@ -60,7 +60,8 @@ describe("Token Display", () => {
     
     // Verify token counts are present and ordered
     const lines = stdout.split("\n");
-    const tokenLines = lines.filter(line => line.includes("tokens"));
+    // Only count lines that show individual file token counts (exclude header/total)
+    const tokenLines = lines.filter(line => line.includes("tokens") && line.includes("%"));
     expect(tokenLines.length).toBe(4); // All 4 files should have token counts
     
     // Extract token counts and verify they're in descending order
@@ -84,14 +85,20 @@ describe("Token Display", () => {
 
   it("should handle empty files", async () => {
     await fs.writeFile(path.join(tempDir, "empty.txt"), "");
-    const { stdout } = await runCLI("--show-output-files");
+    const { stdout } = await runCLI("--show-tokens");
     
     expect(stdout).toContain("empty.txt");
     expect(stdout).toMatch(/empty\.txt.*0 tokens/);
   });
 
   it("should show fixed token count for binary files", async () => {
-    const { stdout } = await runCLI("--show-output-files");
+    const { stdout } = await runCLI("--show-tokens");
     expect(stdout).toMatch(/test\.bin.*10 tokens/); // Binary files get 10 tokens
+  });
+
+  it("should not show token analysis without --show-tokens flag", async () => {
+    const { stdout } = await runCLI();
+    expect(stdout).not.toContain("📊 Token analysis:");
+    expect(stdout).not.toContain("tokens");
   });
 });

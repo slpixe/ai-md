@@ -25,7 +25,8 @@ showOutputFiles: boolean,
 ignoreFilePath: string,
 enableConcurrency: boolean | number,
 dryRun: boolean,
-cliIgnorePatterns: string[] = []
+cliIgnorePatterns: string[] = [],
+showTokens: boolean = false
 ): Promise<void> {
 try {
 const startTime = Date.now();
@@ -227,8 +228,14 @@ logger.warn(
 logger.warn('⚠️ Token count estimation skipped due to large file size.');
 logger.warn('💡 Consider adding more files to ignore patterns to reduce the output size.');
 } else {
-// Display the token analysis
-displayTokenizedFiles(tokenInfos);
+// Always show total token estimate
+const totalEstimate = await estimateTokenCount(finalOutput);
+logger.info(`🔢 Estimated token count: ${totalEstimate}`);
+
+// Display detailed token analysis if requested
+if (showTokens) {
+  displayTokenizedFiles(tokenInfos);
+}
 }
 
 // 12) Optionally show the included files

@@ -53,7 +53,7 @@ beforeEach(async () => {
 
 describe("concurrent processing", () => {
   it("should run sequentially when --concurrent is not used", async () => {
-    const { stdout } = await runCLI(`--input ${tempDir} --show-output-files`);
+    const { stdout } = await runCLI(`--input ${tempDir} -f`);
     expect(stdout).toContain("✅ Files aggregated successfully");
     expect(stdout).toContain("🔄 Running sequentially (no concurrency)");
     
@@ -66,7 +66,7 @@ describe("concurrent processing", () => {
   });
 
   it("should use default concurrency (4) when --concurrent is used without value", async () => {
-    const { stdout } = await runCLI(`--input ${tempDir} --concurrent --show-output-files`);
+    const { stdout } = await runCLI(`--input ${tempDir} -c -f`);
     expect(stdout).toContain("✅ Files aggregated successfully");
     expect(stdout).toContain("🔄 Using concurrent processing with 4 workers");
     
@@ -79,7 +79,7 @@ describe("concurrent processing", () => {
   });
 
   it("should use specified concurrency when value is provided", async () => {
-    const { stdout } = await runCLI(`--input ${tempDir} --concurrent 8 --show-output-files`);
+    const { stdout } = await runCLI(`--input ${tempDir} -c 8 -f`);
     expect(stdout).toContain("✅ Files aggregated successfully");
     expect(stdout).toContain("🔄 Using concurrent processing with 8 workers");
     
