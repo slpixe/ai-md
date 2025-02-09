@@ -1,4 +1,4 @@
-import cli from './src/cli.js';
+import cli from './src/cli';
 export default cli;
 
 // Auto-execute if this is the entry point
