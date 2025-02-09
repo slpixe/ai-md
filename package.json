@@ -17,11 +17,12 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "local-run": "npx ai-md -i demo-folder --whitespace-removal --show-files",
-    "publish": "npm publish --access public",
+    "publish:npm": "npm publish --access public",
+    "publish:jsr": "npx jsr publish",
     "version": "node scripts/sync-version.js && git add jsr.json",
     "preversion": "npm test",
     "version:major": "npm version major",
-    "version:minor": "npm version minor",
+    "version:minor": "npm version minor",x
     "version:patch": "npm version patch"
   },
   "keywords": [
