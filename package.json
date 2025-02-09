@@ -22,7 +22,7 @@
     "version": "node scripts/sync-version.js && git add jsr.json",
     "preversion": "npm test",
     "version:major": "npm version major",
-    "version:minor": "npm version minor",x
+    "version:minor": "npm version minor",
     "version:patch": "npm version patch"
   },
   "keywords": [
