@@ -16,7 +16,7 @@
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "local-run": "npx ai-md --whitespace-removal --show-output-files",
+    "local-run": "npx ai-md -i demo-folder --whitespace-removal --show-files",
     "publish": "npm publish --access public",
     "version": "node scripts/sync-version.js && git add jsr.json",
     "preversion": "npm test",

@@ -53,7 +53,13 @@ const cli: Command = program
 
 export default cli;
 
-// Auto-execute if this is the entry point
-if (import.meta.url === new URL(import.meta.resolve('./cli.js')).href) {
+// Auto-execute if this is the entry point (handles both direct invocation and mod.ts import)
+const currentFileUrl = new URL(import.meta.url);
+const entryPoints = [
+    new URL(import.meta.resolve('./cli.js')).href,
+    new URL(import.meta.resolve('../mod.js')).href
+];
+
+if (entryPoints.includes(currentFileUrl.href)) {
     cli.parse(process.argv);
 }
