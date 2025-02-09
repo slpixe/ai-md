@@ -11,7 +11,7 @@ import fs from "fs/promises";
 import {estimateTokenCount} from "../utils/tokenUtils.js";
 import {displayIncludedFiles, displayTokenizedFiles} from "./display.js";
 import {createIgnoreFilter} from "../utils/ignoreUtils.js";
-import {FileTokenInfo} from "../types/index.js";
+import type {FileTokenInfo} from "../types/index.d.ts";
 
 /**
  * The main aggregator that merges all files into a single Markdown file.
