@@ -1,5 +1,5 @@
 import { logger } from '../utils/logger.js';
-import { FileTokenInfo } from '../types/index.js';
+import type { FileTokenInfo } from '../types/index.d.ts';
 
 export function displayIncludedFiles(includedFiles: string[]): void {
   logger.info('📋 Files included in the output:');
