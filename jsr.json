@@ -10,9 +10,10 @@
       "README.md",
       "LICENSE",
       "mod.ts",
-      "src/**/*",
-      "dist/**/*"
+      "src/**/*.ts"
     ],
-    "exclude": []
+    "exclude": [
+      "src/**/*.test.ts"
+    ]
   }
 }
