@@ -51,6 +51,7 @@ This generates a `codebase.md` file containing your aggregated codebase.
 - `--whitespace-removal`: Enable removal of excess whitespace
 - `--show-output-files`: Display names of included files
 - `--ignore-file <file>`: Specify a custom ignore file (default: .aidigestignore)
+- `--ignore <pattern>`: Add ignore patterns via command line (can be used multiple times)
 - `--concurrent`: Enable concurrency for file processing
 - `--dry-run`: Perform a dry run without writing the output file
 - `--help`: Show this help message
@@ -73,9 +74,28 @@ This generates a `codebase.md` file containing your aggregated codebase.
    npx ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
    ```
 
-## Custom Ignore Patterns
+3. Using CLI ignore patterns:
 
-Place a `.aidigestignore` file in your project root to customize which files or directories to exclude. The syntax works similarly to `.gitignore`.
+   ```bash
+   # Ignore specific files and patterns
+   npx ai-md --ignore "a.ts" --ignore "*.css" --ignore "./folder-b"
+   
+   # Combine with other ignore methods
+   npx ai-md --ignore "*.test.ts" --ignore-file custom.ignore --no-default-ignores
+   ```
+
+## Ignore Patterns
+
+You can specify patterns to exclude files and directories in multiple ways:
+
+1. **Default Ignores**: Built-in patterns for common files to exclude (enabled by default, can be disabled with `--no-default-ignores`).
+
+2. **Custom Ignore File**: Place a `.aidigestignore` file in your project root (or specify with `--ignore-file`). The syntax works similarly to `.gitignore`.
+
+3. **CLI Ignore Patterns**: Use the `--ignore` option one or more times to specify patterns directly in the command. Supports file names, directory paths, and glob patterns:
+   ```bash
+   npx ai-md --ignore "*.test.ts" --ignore "./dist" --ignore "config.json"
+   ```
 
 ## Whitespace Removal
 

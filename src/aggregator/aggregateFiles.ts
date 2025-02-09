@@ -23,7 +23,8 @@ export async function aggregateFiles(
 	showOutputFiles: boolean,
 	ignoreFilePath: string,
 	enableConcurrency: boolean | number,
-dryRun: boolean
+dryRun: boolean,
+cliIgnorePatterns: string[] = []
 ): Promise<void> {
 try {
 const startTime = Date.now();
@@ -37,8 +38,14 @@ logger.debug('Starting file aggregation process');
 // 2) Setup default vs custom ignore
 const defaultIgnore = useDefaultIgnores ? ignore().add(DEFAULT_IGNORES) : ignore();
 const customIgnore = createIgnoreFilter(userIgnorePatterns, ignoreName);
+const cliIgnore = createIgnoreFilter(cliIgnorePatterns, 'CLI patterns');
 
 logger.debug(`Default ignore patterns: ${useDefaultIgnores ? DEFAULT_IGNORES.join(', ') : 'disabled'}`);
+logger.info(
+  cliIgnorePatterns.length > 0
+    ? `📄 CLI ignore patterns: ${cliIgnorePatterns.join(', ')}`
+    : '📄 No CLI ignore patterns provided.'
+);
 logger.debug(`Custom ignore patterns from ${ignoreName}: ${userIgnorePatterns.join(', ') || 'none'}`);
 
 		logger.info(
@@ -99,21 +106,23 @@ logger.debug('Concurrency disabled: processing files sequentially');
 						fileObj.file,
 						outputFile,
 						useDefaultIgnores,
-						defaultIgnore,
-						customIgnore,
-						removeWhitespaceFlag
+defaultIgnore,
+customIgnore,
+cliIgnore,
+removeWhitespaceFlag
 					)
 				);
 			} else {
-				return processSingleFile(
-					fileObj.cwd,
-					fileObj.file,
-					outputFile,
-					useDefaultIgnores,
-					defaultIgnore,
-					customIgnore,
-					removeWhitespaceFlag
-				);
+return processSingleFile(
+fileObj.cwd,
+fileObj.file,
+outputFile,
+useDefaultIgnores,
+defaultIgnore,
+customIgnore,
+cliIgnore,
+removeWhitespaceFlag
+);
 			}
 		};
 
