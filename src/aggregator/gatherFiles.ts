@@ -2,25 +2,43 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { glob } from 'glob';
 import { logger } from "../utils/logger.js";
+import { filterFiles } from "../utils/micromatchUtils.js";
 
-function isGlobPattern(pattern: string): boolean {
-  return /[*?[\]]/.test(pattern);
-}
-
+/**
+ * Normalizes a path to use forward slashes and handles relative paths.
+ *
+ * @param basePath - The base path for relative path resolution
+ * @param filePath - The file path to normalize
+ * @returns Normalized path with forward slashes
+ */
 function normalizeRelativePath(basePath: string, filePath: string): string {
-  // Get the relative path maintaining the input path structure
   const relative = path.relative(basePath, filePath);
   return relative.split(path.sep).join('/');
 }
 
-export async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; file: string }[]> {
+/**
+ * Gathers files based on input paths, respecting include/exclude patterns.
+ * 
+ * @param inputPaths - Array of file/directory paths or glob patterns to process
+ * @param includePatterns - Optional array of glob patterns to include
+ * @param excludePatterns - Optional array of glob patterns to exclude
+ * @returns Array of gathered files with their working directories
+ */
+export async function gatherFiles(
+  inputPaths: string[],
+  includePatterns?: string[],
+  excludePatterns?: string[]
+): Promise<{ cwd: string; file: string }[]> {
   const allFiles: { cwd: string; file: string }[] = [];
   logger.debug(`Starting to gather files from ${inputPaths.length} input paths`);
+
+  // If no includes specified, treat all files as included
+  const effectiveIncludes = includePatterns?.length ? includePatterns : ['**/*'];
 
   for (const inputPath of inputPaths) {
     logger.debug(`Processing input path: ${inputPath}`);
     try {
-      if (isGlobPattern(inputPath)) {
+      if (/[*?[\]]/.test(inputPath)) {
         // Handle glob pattern
         logger.debug(`${inputPath} is a glob pattern`);
         const cwd = process.cwd();
@@ -32,9 +50,11 @@ export async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; 
         });
         logger.debug(`Found ${files.length} files matching pattern ${inputPath}`);
         
-        for (const absolutePath of files) {
-          // For glob patterns, maintain the relative path from CWD
-          const normalizedPath = normalizeRelativePath(cwd, absolutePath);
+        // Filter files based on include/exclude patterns
+        const normalizedPaths = files.map(f => normalizeRelativePath(cwd, f));
+        const filteredPaths = filterFiles(normalizedPaths, effectiveIncludes, excludePatterns);
+        
+        for (const normalizedPath of filteredPaths) {
           allFiles.push({ 
             cwd: process.cwd(),
             file: normalizedPath
@@ -56,10 +76,16 @@ export async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; 
           logger.debug(`Found ${files.length} files in directory ${resolved}`);
           
           const inputDirName = path.basename(resolved);
-          for (const absolutePath of files) {
-            // For directory input, prefix all files with the input directory name
-            const relativeToDir = normalizeRelativePath(resolved, absolutePath);
-            const normalizedPath = `${inputDirName}/${relativeToDir}`;
+          // Get all paths relative to the input directory
+          const relativePaths = files.map(f => {
+            const relativeToDir = normalizeRelativePath(resolved, f);
+            return `${inputDirName}/${relativeToDir}`;
+          });
+          
+          // Filter files based on include/exclude patterns
+          const filteredPaths = filterFiles(relativePaths, effectiveIncludes, excludePatterns);
+          
+          for (const normalizedPath of filteredPaths) {
             allFiles.push({ 
               cwd: path.dirname(resolved),
               file: normalizedPath
@@ -68,14 +94,20 @@ export async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; 
         } else {
           const dirName = path.dirname(resolved);
           const baseName = path.basename(resolved);
-          const parentDirName = path.basename(dirName);
           
-          // If the file is directly specified, don't add parent directory prefix
-          logger.debug(`${resolved} is a file`);
-          allFiles.push({ 
-            cwd: dirName,
-            file: baseName
-          });
+          // For individual files, still check against include/exclude patterns
+          const normalizedPath = baseName;
+          const shouldInclude = filterFiles([normalizedPath], effectiveIncludes, excludePatterns);
+          
+          if (shouldInclude.length > 0) {
+            logger.debug(`${resolved} is an included file`);
+            allFiles.push({ 
+              cwd: dirName,
+              file: baseName
+            });
+          } else {
+            logger.debug(`${resolved} is excluded by patterns`);
+          }
         }
       }
     } catch (error) {
@@ -88,7 +120,6 @@ export async function gatherFiles(inputPaths: string[]): Promise<{ cwd: string; 
   }
   
   logger.debug(`Total files gathered: ${allFiles.length}`);
-  // Log all gathered files for debugging
   allFiles.forEach(f => logger.debug(`Gathered file: ${f.file} (cwd: ${f.cwd})`));
   return allFiles;
 }

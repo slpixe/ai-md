@@ -1,46 +1,51 @@
-import ignore, { Ignore } from "ignore";
 import path from "path";
+import { createMicromatchFilter } from "./micromatchUtils.js";
+import type { Ignore } from 'ignore';
+
+interface TestResult {
+  ignored: boolean;
+  unignored: boolean;
+  pattern: string | null;
+}
 
 /**
  * Create an ignore filter function from an array of patterns.
- * This function normalizes the patterns and ensures that directory paths are handled.
+ * This function uses micromatch for more powerful glob pattern matching.
  *
  * @param {string[]} patterns - The user provided ignore patterns.
  * @param {string} source - A descriptor for logging purposes.
- * @returns {Ignore} An instance of the ignore filter.
+ * @returns {Ignore} An instance of the ignore filter with compatible interface.
  */
 export function createIgnoreFilter(patterns: string[], source: string): Ignore {
-  const ignoreFilter = ignore();
+  const filterFn = createMicromatchFilter(patterns);
   
-  patterns.forEach(pattern => {
-    // Normalize pattern: replace backslashes with forward slashes
-    let normPattern = pattern.replace(/\\/g, "/").trim();
-    
-    // If pattern doesn't contain glob characters
-    if (!/[*?[\]]/.test(normPattern)) {
-      // For directory-like patterns (no file extension), ensure they match all contents
-      if (!path.extname(normPattern)) {
-        // Add multiple variants of the pattern to catch different path formats
-        ignoreFilter.add([
-          normPattern,           // exact match
-          `${normPattern}/**`,   // all contents if it's a directory
-          `**/${normPattern}`,   // match anywhere in path
-          `**/${normPattern}/**` // match directory anywhere and its contents
-        ]);
-      } else {
-        // For file patterns, match the file anywhere in the path
-        ignoreFilter.add([
-          normPattern,
-          `**/${normPattern}`
-        ]);
-      }
-    } else {
-      // For glob patterns, use as-is
-      ignoreFilter.add(normPattern);
+  // Create an object that matches the Ignore interface
+  return {
+    ignores: (filePath: string): boolean => filterFn(filePath),
+    add: () => {
+      return {} as Ignore;
+    },
+    filter: (items: string[]): string[] => {
+      return items.filter(item => !filterFn(item));
+    },
+    createFilter: () => {
+      return (item: string) => !filterFn(item);
+    },
+    test: (item: string): TestResult => {
+      return {
+        ignored: filterFn(item),
+        unignored: !filterFn(item),
+        pattern: patterns.find(p => filterFn(item)) || null
+      };
+    },
+    checkIgnore: (pathname: string): TestResult => {
+      return {
+        ignored: filterFn(pathname),
+        unignored: !filterFn(pathname),
+        pattern: patterns.find(p => filterFn(pathname)) || null
+      };
     }
-  });
-
-  return ignoreFilter;
+  };
 }
 
 /**
