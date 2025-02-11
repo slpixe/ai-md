@@ -1,17 +1,60 @@
-// src/utils/ignoreUtils.ts
+import path from "path";
+import { createMicromatchFilter } from "./micromatchUtils.js";
+import type { Ignore } from 'ignore';
 
-import ignore, { type Ignore } from 'ignore';
-import { logger } from './logger.js';
+interface TestResult {
+  ignored: boolean;
+  unignored: boolean;
+  pattern: string | null;
+}
 
 /**
- * Creates an ignore filter with given patterns.
- * @param ignorePatterns - Array of ignore patterns.
- * @param ignoreFile - Name of the ignore file (for logging purposes).
- * @returns An Ignore instance with the patterns added.
+ * Create an ignore filter function from an array of patterns.
+ * This function uses micromatch for more powerful glob pattern matching.
+ *
+ * @param {string[]} patterns - The user provided ignore patterns.
+ * @param {string} source - A descriptor for logging purposes.
+ * @returns {Ignore} An instance of the ignore filter with compatible interface.
  */
-export function createIgnoreFilter(ignorePatterns: string[], ignoreFile: string): Ignore {
-	logger.debug(`Creating ignore filter with ${ignorePatterns.length} patterns from ${ignoreFile}`);
-	const ig = ignore();
-	ig.add(ignorePatterns);
-	return ig;
+export function createIgnoreFilter(patterns: string[], source: string): Ignore {
+  const filterFn = createMicromatchFilter(patterns);
+  
+  // Create an object that matches the Ignore interface
+  return {
+    ignores: (filePath: string): boolean => filterFn(filePath),
+    add: () => {
+      return {} as Ignore;
+    },
+    filter: (items: string[]): string[] => {
+      return items.filter(item => !filterFn(item));
+    },
+    createFilter: () => {
+      return (item: string) => !filterFn(item);
+    },
+    test: (item: string): TestResult => {
+      return {
+        ignored: filterFn(item),
+        unignored: !filterFn(item),
+        pattern: patterns.find(p => filterFn(item)) || null
+      };
+    },
+    checkIgnore: (pathname: string): TestResult => {
+      return {
+        ignored: filterFn(pathname),
+        unignored: !filterFn(pathname),
+        pattern: patterns.find(p => filterFn(pathname)) || null
+      };
+    }
+  };
+}
+
+/**
+ * Utility function to normalize file paths to use forward slashes.
+ * This is used before applying ignore filters.
+ *
+ * @param {string} filePath - The file path to normalize.
+ * @returns {string} The normalized file path.
+ */
+export function normalizePath(filePath: string): string {
+  return filePath.split(path.sep).join("/");
 }
