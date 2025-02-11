@@ -3,19 +3,56 @@ Purpose: Tests the interaction between include (-i) and exclude patterns, ensuri
 */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { spawn } from "child_process";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-include-exclude");
 const codebasePath = path.join(tempDir, "codebase.md");
 
-async function runCLI(args: string = "") {
+async function runCLI(args: string = ""): Promise<void> {
   const cliPath = path.resolve(__dirname, "../src/cli.ts");
-  return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+  // Split args but preserve quoted sections
+  const argArray = args.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(arg => {
+    // Remove quotes but keep the content
+    const unquoted = arg.startsWith('"') && arg.endsWith('"') ? arg.slice(1, -1) : arg;
+    return unquoted;
+  }) || [];
+
+  return new Promise((resolve, reject) => {
+    const child = spawn("npx", ["tsx", cliPath, ...argArray], {
+      cwd: tempDir,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    child.on('error', (error) => {
+      reject(new Error(`Failed to start command: ${error.message}`));
+    });
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(
+          `Command failed with code ${code}\n` +
+          `STDOUT: ${stdout}\n` +
+          `STDERR: ${stderr}`
+        ));
+      }
+    });
+  });
 }
 
 describe("Advanced Include/Exclude Behavior", () => {
@@ -48,11 +85,11 @@ describe("Advanced Include/Exclude Behavior", () => {
     const content = await fs.readFile(codebasePath, "utf-8");
     
     // Should include files from folder-a
-    expect(content).toContain("root.txt");
-    expect(content).toContain("folder-c/c.txt");
+    expect(content).toContain("folder-a/root.txt");
+    expect(content).toContain("folder-a/folder-c/c.txt");
     
     // Should exclude files from folder-b despite folder-a being included
-    expect(content).not.toContain("folder-b/b.txt");
+    expect(content).not.toContain("folder-a/folder-b/b.txt");
     
     // Should not include files outside folder-a
     expect(content).not.toContain("outside.txt");
@@ -63,12 +100,12 @@ describe("Advanced Include/Exclude Behavior", () => {
     const content = await fs.readFile(codebasePath, "utf-8");
     
     // Should include files from folder-a and root
-    expect(content).toContain("root.txt");
-    expect(content).toContain("folder-c/c.txt");
+    expect(content).toContain("folder-a/root.txt");
+    expect(content).toContain("folder-a/folder-c/c.txt");
     expect(content).toContain("outside.txt");
     
     // Should exclude files from folder-b
-    expect(content).not.toContain("folder-b/b.txt");
+    expect(content).not.toContain("folder-a/folder-b/b.txt");
   });
 
   it("should support glob patterns in includes and excludes", async () => {
@@ -76,10 +113,10 @@ describe("Advanced Include/Exclude Behavior", () => {
     const content = await fs.readFile(codebasePath, "utf-8");
     
     // Should include .txt files except those in folder-b
-    expect(content).toContain("root.txt");
-    expect(content).toContain("c.txt");
+    expect(content).toContain("folder-a/root.txt");
+    expect(content).toContain("folder-a/folder-c/c.txt");
     expect(content).toContain("outside.txt");
-    expect(content).not.toContain("b.txt");
+    expect(content).not.toContain("folder-a/folder-b/b.txt");
   });
 
   it("should handle multiple includes with excludes", async () => {
@@ -87,11 +124,11 @@ describe("Advanced Include/Exclude Behavior", () => {
     const content = await fs.readFile(codebasePath, "utf-8");
     
     // Should include specifically included files and paths
-    expect(content).toContain("root.txt");
-    expect(content).toContain("c.txt");
+    expect(content).toContain("folder-a/root.txt");
+    expect(content).toContain("folder-a/folder-c/c.txt");
     expect(content).toContain("outside.txt");
     
     // Should exclude matched patterns even in included directories
-    expect(content).not.toContain("b.txt");
+    expect(content).not.toContain("folder-a/folder-b/b.txt");
   });
 });
