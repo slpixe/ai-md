@@ -1,5 +1,7 @@
 # @slpixe/ai-md (JSR) | ai-txt (NPM)
 
+![npm](https://img.shields.io/npm/v/ai-txt)
+
 A CLI tool to aggregate your codebase into a single Markdown file for easier review with AI models.
 
 Available on:
