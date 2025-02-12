@@ -41,7 +41,7 @@ const cli: Command = program
             inputPaths,
             outputFile,
             options.defaultIgnores,
-            !options.keepWhitespace, // Invert the flag - remove whitespace by default
+            !options.keepWhitespace, //remove whitespace by default
             options.showFiles,
             ignoreFileAbsolute,
             concurrentValue ?? false,
