@@ -16,7 +16,7 @@ ai-md scans your project directory, applies default and custom ignore patterns, 
 
 - Recursively aggregates files from folders.
 - Supports default and custom ignore patterns.
-- Optional whitespace removal (except for whitespace-dependent languages).
+- Removes extra whitespace by default (except for whitespace-dependent languages). Use the `-w, --keep-whitespace` flag to preserve original whitespace.
 - Includes notes for binary and SVG files.
 - Concurrency support for faster processing.
 
@@ -50,7 +50,7 @@ This generates a `codebase.md` file containing your aggregated codebase.
 - `-i, --input <paths...>`: Input file(s) or directory(ies) (default: current directory)
 - `-o, --output <file>`: Output Markdown file (default: codebase.md)
 - `--no-default-ignores`: Disable default ignore patterns
-- `--whitespace-removal`: Enable removal of excess whitespace
+- `-w, --keep-whitespace`: Preserve original whitespace. By default, extra whitespace is removed (except in whitespace-sensitive files).
 - `--show-output-files`: Display names of included files
 - `--ignore-file <file>`: Specify a custom ignore file (default: .aidigestignore)
 - `--ignore <pattern>`: Add ignore patterns via command line (can be used multiple times)
@@ -73,7 +73,7 @@ This generates a `codebase.md` file containing your aggregated codebase.
 2. With specific options and custom inputs:
 
    ```bash
-   npx ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
+   npx ai-md --show-output-files -i /src/Components -i README.md
    ```
 
 3. Using CLI ignore patterns:
@@ -101,7 +101,7 @@ You can specify patterns to exclude files and directories in multiple ways:
 
 ## Whitespace Removal
 
-When the `--whitespace-removal` flag is enabled, ai-md removes extra whitespace to reduce the token count for AI models. Note that files in whitespace-dependent languages (e.g., Python, YAML) are excluded from this process.
+By default, ai-md removes extra whitespace from files to reduce token counts for AI models. Files written in whitespace-sensitive languages (e.g., Python, YAML) are exempt from this process. If you prefer to keep the original formatting and whitespace, use the `-w` or `--keep-whitespace` flag when running the command.
 
 ## Binary and SVG File Handling
 
@@ -121,7 +121,7 @@ Binary files and SVG images are included with a short note about their file type
 
 - For local testing with a specific build directory and custom inputs, run:
   ```bash
-  npx --prefix ~/{ai-md-directory} ai-md --whitespace-removal --show-output-files -i /src/Components -i README.md
+  npx --prefix ~/{ai-md-directory} ai-md --keep-whitespace --show-output-files -i /src/Components -i README.md
   ```
 
 - If you encounter permission issues, you might need to set execution permissions:
