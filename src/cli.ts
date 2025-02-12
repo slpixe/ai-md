@@ -12,7 +12,7 @@ const cli: Command = program
     .option('--ignore-file <path>', 'Path to ignore file', '.aidigestignore')
     .option('--ignore <pattern>', 'Additional ignore patterns (can be used multiple times)', (val: string, prev: string[]) => [...prev, val], [])
     .option('--no-default-ignores', 'Disable default ignore patterns')
-    .option('--whitespace-removal', 'Remove unnecessary whitespace')
+    .option('-w, --keep-whitespace', 'Keep whitespace (default trims whitespace)')
     .option('-f, --show-files', 'Show output files being processed')
     .option('-t, --show-tokens', 'Show token count analysis for each file')
     .option('-c, --concurrent [number]', 'Number of concurrent file processing (default: 4)')
@@ -41,7 +41,7 @@ const cli: Command = program
             inputPaths,
             outputFile,
             options.defaultIgnores,
-            options.whitespaceRemoval,
+            !options.keepWhitespace, // Invert the flag - remove whitespace by default
             options.showFiles,
             ignoreFileAbsolute,
             concurrentValue ?? false,
