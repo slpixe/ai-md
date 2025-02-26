@@ -76,4 +76,27 @@ describe("CLI Ignore Behavior", () => {
     expect(content).toContain("a.ts");
     expect(content).not.toContain("b.css");
   });
+
+  it("should respect **/ prefix for directory ignores", async () => {
+    await runCLI('--ignore "**/folder-b/**"');
+    const content = await fs.readFile(codebasePath, 'utf-8');
+    expect(content).toContain("a.ts");
+    expect(content).toContain("b.css");
+    expect(content).not.toContain("folder-b/test.js");
+  });
+
+  it("should respect **/ prefix for specific file ignores", async () => {
+    // Create a README.md file in a subfolder
+    await fs.mkdir(path.join(tempDir, "docs"), { recursive: true });
+    await fs.writeFile(path.join(tempDir, "README.md"), "# Root README");
+    await fs.writeFile(path.join(tempDir, "docs/README.md"), "# Docs README");
+
+    await runCLI('--ignore "**/README.md"');
+    const content = await fs.readFile(codebasePath, 'utf-8');
+    expect(content).toContain("a.ts");
+    expect(content).toContain("b.css");
+    expect(content).toContain("test.js");
+    expect(content).not.toContain("# Root README");
+    expect(content).not.toContain("# Docs README");
+  });
 });
