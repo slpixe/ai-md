@@ -20,20 +20,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Install global dependencies
-        run: npm install -g tsx
+        run: pnpm add -g tsx
 
       - name: Run tests
-        run: npm test
+        run: pnpm test
 
   version:
     needs: test
@@ -45,13 +49,17 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref }}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Configure Git
         run: |
@@ -68,7 +76,7 @@ jobs:
           node scripts/sync-version.js
           
           # Commit both package.json and jsr.json
-          git add package.json package-lock.json jsr.json
+          git add package.json pnpm-lock.yaml jsr.json
           git commit -m "chore(release): v$NEW_VERSION"
           git tag v$NEW_VERSION
           
@@ -89,17 +97,21 @@ jobs:
         with:
           ref: ${{ github.ref }}
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm build
 
       - name: Publish to NPM
         env:
