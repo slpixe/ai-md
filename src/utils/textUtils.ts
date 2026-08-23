@@ -7,5 +7,5 @@ export function removeWhitespace(val: string): string {
 
 export function escapeTripleBackticks(content: string): string {
 	logger.debug(`Escaping triple backticks in content of length ${content.length}`);
-	return content.replace(/\`\`\`/g, "\\`\\`\\`");
+	return content.replace(/```/g, "\\`\\`\\`");
 }

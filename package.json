@@ -7,23 +7,37 @@
   "bin": {
     "ai-md": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
+    "clean": "node scripts/clean.js",
     "build": "tsc",
-    "prepublishOnly": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "validate": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
+    "prepack": "pnpm run clean && pnpm run build",
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "local-run": "npx ai-md -i demo-folder --whitespace-removal --show-files",
-    "publish:npm": "npm publish --access public",
-    "publish:jsr": "npx jsr publish",
-    "version": "node scripts/sync-version.js && git add jsr.json",
-    "preversion": "npm test",
-    "version:major": "npm version major",
-    "version:minor": "npm version minor",
-    "version:patch": "npm version patch"
+    "local-run": "pnpm exec tsx src/cli.ts -i demo-folder --show-files",
+    "publish:npm": "pnpm publish --access public",
+    "publish:jsr": "pnpm exec jsr publish",
+    "version": "node scripts/sync-version.js && git add jsr.json src/version.ts",
+    "preversion": "pnpm test",
+    "version:major": "pnpm version major",
+    "version:minor": "pnpm version minor",
+    "version:patch": "pnpm version patch"
   },
   "keywords": [
     "cli",
@@ -33,22 +47,26 @@
   "author": "@slpixe",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22",
-    "@vitest/coverage-v8": "^3.0.5",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "@eslint/js": "^10.0.1",
+    "@types/micromatch": "^4.0.10",
+    "@types/node": "^24.13.3",
+    "@vitest/coverage-v8": "^4.1.11",
+    "eslint": "^10.9.0",
+    "globals": "^17.11.0",
+    "jsr": "^0.14.3",
+    "tsx": "^4.23.12",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@types/micromatch": "^4.0.9",
-    "commander": "^13.1.0",
-    "glob": "^11.0.1",
-    "gpt-tokenizer": "^2.8.1",
-    "ignore": "^7.0.3",
-    "isbinaryfile": "^5.0.4",
+    "commander": "^15.0.0",
+    "glob": "^13.0.6",
+    "gpt-tokenizer": "^4.0.0",
+    "ignore": "^7.0.6",
+    "isbinaryfile": "^6.0.0",
     "micromatch": "^4.0.8",
-    "p-limit": "^6.2.0",
-    "winston": "^3.17.0"
+    "winston": "^3.19.0"
   },
   "homepage": "https://github.com/slpixe/ai-md#readme",
   "repository": {

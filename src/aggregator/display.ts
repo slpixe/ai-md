@@ -9,10 +9,15 @@ export function displayIncludedFiles(includedFiles: string[]): void {
 }
 
 export function displayTokenizedFiles(files: FileTokenInfo[]): void {
+  logger.info('\n📊 Token analysis:');
+
+  if (files.length === 0) {
+    logger.info('No included files to analyze.');
+    return;
+  }
+
   const maxPathLength = Math.max(...files.map(f => f.path.length));
   const maxTokenLength = Math.max(...files.map(f => f.tokenCount.toString().length));
-  
-  logger.info('\n📊 Token analysis:');
   logger.info('╭' + '─'.repeat(maxPathLength + maxTokenLength + 20) + '╮');
   
   files.forEach(file => {

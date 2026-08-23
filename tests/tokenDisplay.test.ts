@@ -1,16 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
+import { runCli } from './helpers/runCli.js';
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-token-display");
 
 async function runCLI(args: string = "") {
-  const cliPath = path.resolve(__dirname, "../src/cli.ts");
-  return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+  return runCli(tempDir, args);
 }
 
 describe("Token Display", () => {
@@ -75,7 +72,7 @@ describe("Token Display", () => {
     
     // Verify percentages add up to approximately 100%
     const percentages = tokenLines.map(line => {
-      const match = line.match(/(\d+\.?\d*)\%/);
+      const match = line.match(/(\d+\.?\d*)%/);
       return match ? parseFloat(match[1]) : 0;
     });
     
@@ -100,5 +97,13 @@ describe("Token Display", () => {
     const { stdout } = await runCLI();
     expect(stdout).not.toContain("📊 Token analysis:");
     expect(stdout).not.toContain("tokens");
+  });
+
+  it("should handle a directory with no included files", async () => {
+    await fs.rm(tempDir, { recursive: true, force: true });
+    await fs.mkdir(tempDir, { recursive: true });
+
+    const { stdout } = await runCLI("--show-tokens");
+    expect(stdout).toContain("No included files to analyze.");
   });
 });

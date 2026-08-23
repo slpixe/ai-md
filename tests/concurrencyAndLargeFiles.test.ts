@@ -3,18 +3,15 @@ Purpose: Ensures large files are skipped properly, and concurrency does not caus
  */
 
 import {describe, it, expect, beforeEach, afterEach} from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
+import { runCli } from './helpers/runCli.js';
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-concurrency-large");
 
 async function runCLI(args: string = "") {
-	const cliPath = path.resolve(__dirname, "../src/cli.ts");
-	return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+	return runCli(tempDir, args);
 }
 
 describe("Concurrency & Large Files", () => {
@@ -38,17 +35,25 @@ beforeEach(async () => {
 		const largeFile = path.join(tempDir, "large.txt");
 		await fs.writeFile(largeFile, "a".repeat(6.1 * 1024 * 1024)); // 6.1MB
 
-		const { stdout } = await runCLI(`--input ${tempDir}`);
-
-		// Print CLI output to debug
-		console.log("CLI Output:\n", stdout);
+		await runCLI(`--input ${tempDir}`);
 
 		// Read the generated file instead
 		const codebasePath = path.join(tempDir, "codebase.md");
 		const content = await fs.readFile(codebasePath, "utf-8");
-		console.log("Final Aggregated Content:\n", content);
 
 		expect(content).toContain("(This text file is > 5.0 MB, skipping content.)");
+	});
+
+	it("should stream output larger than the token-analysis limit", async () => {
+		for (let index = 1; index <= 3; index += 1) {
+			await fs.writeFile(path.join(tempDir, `stream-${index}.txt`), String(index).repeat(4 * 1024 * 1024));
+		}
+
+		const { stdout } = await runCLI(`--input ${tempDir} --concurrent 2`);
+		const stats = await fs.stat(path.join(tempDir, "codebase.md"));
+
+		expect(stats.size).toBeGreaterThan(10 * 1024 * 1024);
+		expect(stdout).toContain("Token count estimation skipped due to large file size");
 	});
 
 describe("concurrent processing", () => {
@@ -89,6 +94,11 @@ describe("concurrent processing", () => {
     for (let i = 1; i <= 10; i++) {
       expect(content).toContain(`test${i}.txt`);
     }
+  });
+
+  it("should reject invalid concurrency values", async () => {
+    await expect(runCLI("--concurrent 0")).rejects.toThrow(/between 1 and 64/);
+    await expect(runCLI("--concurrent nope")).rejects.toThrow(/positive integer/);
   });
 });
 });

@@ -1,167 +1,107 @@
-# @slpixe/ai-md (JSR) | ai-txt (NPM)
+# ai-md
 
-![npm](https://img.shields.io/npm/v/ai-txt)
+[![npm](https://img.shields.io/npm/v/ai-txt)](https://www.npmjs.com/package/ai-txt)
 
-A CLI tool to aggregate your codebase into a single Markdown file for easier review with AI models.
+`ai-md` aggregates files into one Markdown document for review with AI tools. It applies default and custom ignore patterns, avoids embedding binary contents, can reduce whitespace, and can estimate token usage.
 
-Available on:
-- JSR: [jsr.io/@slpixe/ai-md](https://jsr.io/@slpixe/ai-md)
-- NPM: [npmjs.com/package/ai-txt](https://www.npmjs.com/package/ai-txt)
+The project is published under different registry names for compatibility:
 
-## Overview
+- npm package: [`ai-txt`](https://www.npmjs.com/package/ai-txt)
+- installed command: `ai-md`
+- JSR package: [`@slpixe/ai-md`](https://jsr.io/@slpixe/ai-md)
 
-ai-md scans your project directory, applies default and custom ignore patterns, and merges files into a formatted Markdown output. It handles text, binary, and SVG files appropriately.
+## Run it
 
-## Features
+Run the npm package without installing it:
 
-- Recursively aggregates files from folders.
-- Supports default and custom ignore patterns.
-- Removes extra whitespace by default (except for whitespace-dependent languages). Use the `-w, --keep-whitespace` flag to preserve original whitespace.
-- Includes notes for binary and SVG files.
-- Concurrency support for faster processing.
-
-## Usage
-
-You can run the CLI tool using these methods:
-
-Using JSR (recommended):
 ```bash
-# Using npx with JSR
-npx jsr run @slpixe/ai-md
-
-# Using JSR CLI directly
-jsr run @slpixe/ai-md
+pnpm dlx ai-txt
 ```
 
-Using npm:
-```bash
-# Run directly with NPM
-npx ai-txt
+Or install the command globally:
 
-# Install globally
-npm install -g ai-txt
-ai-md  # Command name remains ai-md for consistency
+```bash
+pnpm add --global ai-txt
+ai-md
 ```
 
-This generates a `codebase.md` file containing your aggregated codebase.
+Run the JSR package through its CLI:
+
+```bash
+pnpm dlx jsr run @slpixe/ai-md
+```
+
+By default, the command scans the current directory and writes `codebase.md`.
 
 ## Options
 
-- `-i, --input <paths...>`: Input file(s) or directory(ies) (default: current directory)
-- `-o, --output <file>`: Output Markdown file (default: codebase.md)
-- `--no-default-ignores`: Disable default ignore patterns
-- `-w, --keep-whitespace`: Preserve original whitespace. By default, extra whitespace is removed (except in whitespace-sensitive files).
-- `--show-output-files`: Display names of included files
-- `--ignore-file <file>`: Specify a custom ignore file (default: .aidigestignore)
-- `--ignore <pattern>`: Add ignore patterns via command line (can be used multiple times)
-- `--concurrent`: Enable concurrency for file processing
-- `--dry-run`: Perform a dry run without writing the output file
-- `--help`: Show this help message
+```text
+-i, --input <paths...>     Input files, directories, or glob patterns
+-o, --output <path>        Output path (default: codebase.md)
+--ignore-file <path>       Ignore file (default: .aidigestignore)
+--ignore <pattern>         Additional ignore pattern; may be repeated
+--no-default-ignores       Disable built-in ignore patterns
+-w, --keep-whitespace      Preserve original whitespace
+-f, --show-files           List included files
+-t, --show-tokens          Show per-file token estimates
+-c, --concurrent [number] Process concurrently (default: 4, maximum: 64)
+-d, --dry-run              Inspect the operation without writing output
+-v, --verbose              Enable debug logging
+```
 
-## Examples
+Examples:
 
-1. Basic usage:
+```bash
+pnpm dlx ai-txt --show-files -i src README.md
+pnpm dlx ai-txt --ignore "*.test.ts" --ignore "coverage/**"
+pnpm dlx ai-txt --keep-whitespace --show-tokens --concurrent 8
+```
 
-   ```bash
-   # Using NPM package
-   npx ai-txt
-   
-   # Using JSR package
-   npx jsr run @slpixe/ai-md
-   ```
+## Ignored and sensitive files
 
-2. With specific options and custom inputs:
+Built-in ignores cover dependency directories, generated output, common caches, environment files, package-manager credentials, private-key formats, SSH/AWS credential directories, and similar files. Add project-specific patterns to `.aidigestignore` or with repeated `--ignore` flags.
 
-   ```bash
-   npx ai-md --show-output-files -i /src/Components -i README.md
-   ```
+Generated aggregates can still contain source code, configuration, personal information, or credentials stored under an unusual filename. Review `codebase.md` before uploading or sharing it. Use `--dry-run --show-files` to inspect the file list first. `--no-default-ignores` should be used only when you understand the disclosure risk.
 
-3. Using CLI ignore patterns:
-
-   ```bash
-   # Ignore specific files and patterns
-   npx ai-md --ignore "a.ts" --ignore "*.css" --ignore "./folder-b"
-   
-   # Combine with other ignore methods
-   npx ai-md --ignore "*.test.ts" --ignore-file custom.ignore --no-default-ignores
-   ```
-
-## Ignore Patterns
-
-You can specify patterns to exclude files and directories in multiple ways:
-
-1. **Default Ignores**: Built-in patterns for common files to exclude (enabled by default, can be disabled with `--no-default-ignores`).
-
-2. **Custom Ignore File**: Place a `.aidigestignore` file in your project root (or specify with `--ignore-file`). The syntax works similarly to `.gitignore`.
-
-3. **CLI Ignore Patterns**: Use the `--ignore` option one or more times to specify patterns directly in the command. Supports file names, directory paths, and glob patterns:
-   ```bash
-   npx ai-md --ignore "*.test.ts" --ignore "./dist" --ignore "config.json"
-   ```
-
-## Whitespace Removal
-
-By default, ai-md removes extra whitespace from files to reduce token counts for AI models. Files written in whitespace-sensitive languages (e.g., Python, YAML) are exempt from this process. If you prefer to keep the original formatting and whitespace, use the `-w` or `--keep-whitespace` flag when running the command.
-
-## Binary and SVG File Handling
-
-Binary files and SVG images are included with a short note about their file type rather than full content, ensuring that file structure is maintained without unnecessary bulk.
+Whitespace is reduced by default, except for configured whitespace-sensitive formats such as Python, YAML, Pug, Haml, and Godot scripts. Use `--keep-whitespace` to preserve all source formatting.
 
 ## Development
 
-- To run locally with full CLI options, use:
-  ```bash
-  npm run start
-  ```
+The required toolchain is Node.js 24 and the exact pnpm version declared in `package.json`:
 
-- If built (after `npm run build`), you can run:
-  ```bash
-  npx ai-md
-  ```
-
-- For local testing with a specific build directory and custom inputs, run:
-  ```bash
-  npx --prefix ~/{ai-md-directory} ai-md --keep-whitespace --show-output-files -i /src/Components -i README.md
-  ```
-
-- If you encounter permission issues, you might need to set execution permissions:
-  ```bash
-  chmod +x dist/index.js
-  ```
-
-- For testing, execute:
-  ```bash
-  npm test
-  ```
-
-- To build the project before publishing:
-  ```bash
-  npm run build
-  ```
-
-## Package Updates
-
-For manual dependency updates:
 ```bash
-# Check available updates
-npx npm-check-updates
-
-# Interactive mode (recommended)
-npx npm-check-updates -i
-
-# Update all dependencies
-npx npm-check-updates -u && npm install
+corepack enable
+pnpm install --frozen-lockfile
+pnpm validate
 ```
 
-Alternatively, enable Renovate in your repository for automated dependency updates:
-1. Install [Renovate App](https://github.com/apps/renovate) from GitHub Marketplace
-2. Add to your repository
-3. Renovate will automatically create a PR with its base configuration
+Useful commands:
 
-## Deploy New Version
+```bash
+pnpm local-run       # run the source CLI against demo-folder
+pnpm test            # run tests once
+pnpm test:watch      # watch tests
+pnpm test:coverage   # collect coverage
+pnpm lint            # lint JavaScript and TypeScript
+pnpm typecheck       # typecheck without emitting files
+pnpm build           # compile to dist
+pnpm pack --dry-run  # inspect the npm package contents
+```
 
-Deployments to both NPM and JSR are handled automatically via GitHub Actions when changes are pushed to the main/master branch.
+Tests invoke the repository's local `tsx` dependency and do not download executables at runtime. Contributor and agent rules are in [`AGENTS.md`](./AGENTS.md).
+
+## Dependencies and releases
+
+Renovate opens vulnerability fixes immediately, groups routine patch/minor updates weekly, and leaves major updates for explicit approval in the dependency dashboard.
+
+Start a release with the manual **Prepare Release** GitHub Actions workflow. It opens a version pull request, which follows the normal required checks. After that PR is merged, the **Publish** workflow waits for approval from the protected `release` environment, creates the version tag, and publishes.
+
+npm publishing uses OIDC trusted publishing with provenance; no long-lived npm token is required. Configure npm's trusted publisher for repository `slpixe/ai-md`, workflow filename `publish.yml`, and environment `release`. JSR trusted publishing must authorize `.github/workflows/publish.yml` as well.
+
+## Security
+
+See [`SECURITY.md`](./SECURITY.md) for private vulnerability reporting. GitHub Actions are pinned to immutable commits and use least-privilege job permissions.
 
 ## License
 
-This project is licensed under the MIT License.
+Licensed under the [MIT License](./LICENSE).

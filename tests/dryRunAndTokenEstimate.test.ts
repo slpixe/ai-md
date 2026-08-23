@@ -1,16 +1,13 @@
 import {describe, it, expect, beforeEach, afterEach} from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
+import { runCli } from './helpers/runCli.js';
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-dry-token");
 
 async function runCLI(args: string = "") {
-	const cliPath = path.resolve(__dirname, "../src/cli.ts");
-	return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+	return runCli(tempDir, args);
 }
 
 describe("Dry Run & Token Estimation", () => {

@@ -1,4 +1,4 @@
-import { describe, it, beforeAll } from 'vitest';
+import { describe, it } from 'vitest';
 import { performance } from 'node:perf_hooks';
 import { encode } from 'gpt-tokenizer';
 
