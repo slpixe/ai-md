@@ -61,8 +61,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr create \
+          if PR_URL="$(gh pr create \
             --base "$GITHUB_REF_NAME" \
             --head "release/v${VERSION}" \
             --title "chore(release): v${VERSION}" \
-            --body "Automated version update for v${VERSION}. Merge after all required checks pass; publishing starts from the protected release environment."
+            --body "Automated version update for v${VERSION}. Merge after all required checks pass; publishing starts from the protected release environment." 2>/dev/null)"; then
+            echo "Release pull request: ${PR_URL}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            COMPARE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...release/v${VERSION}?expand=1"
+            echo "::warning::Repository policy prevents GitHub Actions from creating pull requests. Open the prepared release branch manually: ${COMPARE_URL}"
+            {
+              echo "## Release branch prepared"
+              echo
+              echo "Repository policy prevents GitHub Actions from creating the pull request."
+              echo "[Open the v${VERSION} release pull request](${COMPARE_URL})"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
