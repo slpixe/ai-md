@@ -42,7 +42,10 @@ describe("Basic Behavior", () => {
 	});
 
 	it("should report the package version", async () => {
+		const {version} = JSON.parse(
+			await fs.readFile(new URL("../package.json", import.meta.url), "utf8"),
+		) as {version: string};
 		const {stdout} = await runCLI("--version");
-		expect(stdout.trim()).toBe("1.11.0");
+		expect(stdout.trim()).toBe(version);
 	});
 });

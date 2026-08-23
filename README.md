@@ -12,6 +12,8 @@ The project is published under different registry names for compatibility:
 
 ## Run it
 
+Requires Node.js 22 or newer.
+
 Run the npm package without installing it:
 
 ```bash
