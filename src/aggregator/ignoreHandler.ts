@@ -1,6 +1,5 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import ignore, { type Ignore } from 'ignore';
 import {logger} from "../utils/logger.js";
 
 export async function readIgnoreFile(fileDir: string, fileName: string): Promise<string[]> {

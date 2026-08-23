@@ -3,56 +3,16 @@ Purpose: Tests the interaction between include (-i) and exclude patterns, ensuri
 */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { spawn } from "child_process";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
+import { runCli } from './helpers/runCli.js';
 
 const tempDir = path.join(os.tmpdir(), "ai-md-test-include-exclude");
 const codebasePath = path.join(tempDir, "codebase.md");
 
 async function runCLI(args: string = ""): Promise<void> {
-  const cliPath = path.resolve(__dirname, "../src/cli.ts");
-  // Split args but preserve quoted sections
-  const argArray = args.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(arg => {
-    // Remove quotes but keep the content
-    const unquoted = arg.startsWith('"') && arg.endsWith('"') ? arg.slice(1, -1) : arg;
-    return unquoted;
-  }) || [];
-
-  return new Promise((resolve, reject) => {
-    const child = spawn("npx", ["tsx", cliPath, ...argArray], {
-      cwd: tempDir,
-      stdio: ['ignore', 'pipe', 'pipe']
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('error', (error) => {
-      reject(new Error(`Failed to start command: ${error.message}`));
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(
-          `Command failed with code ${code}\n` +
-          `STDOUT: ${stdout}\n` +
-          `STDERR: ${stderr}`
-        ));
-      }
-    });
-  });
+  await runCli(tempDir, args);
 }
 
 describe("Advanced Include/Exclude Behavior", () => {

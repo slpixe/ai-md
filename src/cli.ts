@@ -1,11 +1,28 @@
 #!/usr/bin/env node
-import { program, Command } from 'commander';
+import { program, Command, InvalidArgumentError } from 'commander';
 import path from 'path';
 import { updateLoggerLevel } from './utils/logger.js';
-import {aggregateFiles} from "./aggregator/aggregateFiles.js";
+import { aggregateFiles } from './aggregator/aggregateFiles.js';
+import { VERSION } from './version.js';
+
+const DEFAULT_CONCURRENCY = 4;
+const MAX_CONCURRENCY = 64;
+
+function parseConcurrency(value: string): number {
+    if (!/^\d+$/.test(value)) {
+        throw new InvalidArgumentError('Concurrency must be a positive integer.');
+    }
+
+    const parsed = Number(value);
+    if (parsed < 1 || parsed > MAX_CONCURRENCY) {
+        throw new InvalidArgumentError(`Concurrency must be between 1 and ${MAX_CONCURRENCY}.`);
+    }
+
+    return parsed;
+}
 
 const cli: Command = program
-    .version('1.0.0')
+    .version(VERSION)
     .description('Aggregate files into a single Markdown file')
     .option('-i, --input <paths...>', 'Input file/directory paths')
     .option('-o, --output <path>', 'Output file path', 'codebase.md')
@@ -15,7 +32,11 @@ const cli: Command = program
     .option('-w, --keep-whitespace', 'Keep whitespace (default trims whitespace)')
     .option('-f, --show-files', 'Show output files being processed')
     .option('-t, --show-tokens', 'Show token count analysis for each file')
-    .option('-c, --concurrent [number]', 'Number of concurrent file processing (default: 4)')
+    .option(
+        '-c, --concurrent [number]',
+        `Number of concurrent file-processing workers (default: ${DEFAULT_CONCURRENCY}, max: ${MAX_CONCURRENCY})`,
+        parseConcurrency,
+    )
     .option('-d, --dry-run', 'Show what would be done without making changes')
     .option('-v, --verbose', 'Show debug-level logs')
     .action(async (options) => {
@@ -30,12 +51,9 @@ const cli: Command = program
             ? options.ignoreFile
             : path.join(process.cwd(), options.ignoreFile);
 
-        let concurrentValue: number | false = false;
-        if (options.concurrent === true) {
-            concurrentValue = 4;
-        } else if (typeof options.concurrent === 'string') {
-            concurrentValue = parseInt(options.concurrent, 10);
-        }
+        const concurrentValue = options.concurrent === true
+            ? DEFAULT_CONCURRENCY
+            : options.concurrent ?? false;
 
         await aggregateFiles(
             inputPaths,
@@ -61,5 +79,10 @@ const entryPoints = [
 ];
 
 if (entryPoints.includes(currentFileUrl.href)) {
-    cli.parse(process.argv);
+    cli.parseAsync(process.argv).catch((error: unknown) => {
+        if (error instanceof Error) {
+            console.error(error.message);
+        }
+        process.exitCode = 1;
+    });
 }

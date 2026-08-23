@@ -4,19 +4,15 @@ output, custom output files, and respecting the --input flag.
 */
 
 import {afterEach, beforeEach, describe, expect, it} from "vitest";
-import {exec} from "child_process";
-import {promisify} from "util";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
-import {ExecOptions} from "node:child_process";
+import { runCli } from './helpers/runCli.js';
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test");
 
-async function runCLI(args: string = "", opts: ExecOptions = {}) {
-	const cliPath = path.resolve(__dirname, "../src/cli.ts");
-	return execAsync(`npx tsx ${cliPath} ${args}`, {...opts, cwd: tempDir});
+async function runCLI(args: string = "") {
+	return runCli(tempDir, args);
 }
 
 describe("Basic Behavior", () => {
@@ -43,5 +39,10 @@ describe("Basic Behavior", () => {
 		await fs.writeFile(testFile, "Test content");
 		const {stdout} = await runCLI(`--input ${tempDir} --show-files`);
 		expect(stdout).toContain("test.txt");
+	});
+
+	it("should report the package version", async () => {
+		const {stdout} = await runCLI("--version");
+		expect(stdout.trim()).toBe("1.11.0");
 	});
 });

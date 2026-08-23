@@ -1,14 +1,12 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import { isTextFile, shouldTreatAsBinary, getFileType } from '../utils/fileUtils.js';
-import { DEFAULT_IGNORES } from '../utils/constants.js';
+import { MAX_SINGLE_FILE_SIZE, WHITESPACE_DEPENDENT_EXTENSIONS } from '../utils/constants.js';
 import ignore from 'ignore';
 import { logger } from "../utils/logger.js";
 import { escapeTripleBackticks, removeWhitespace } from "../utils/textUtils.js";
 import { estimateTokenCount } from "../utils/tokenUtils.js";
 import { normalizePath } from "../utils/ignoreUtils.js";
-
-const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 function generatePathVariants(filePath: string): string[] {
   const normalizedPath = normalizePath(filePath);
@@ -92,13 +90,13 @@ export async function processSingleFile(
   tokenCount: number;
 }> {
   try {
-    const absolutePath = path.join(cwd, file);
+    const absolutePath = path.resolve(cwd, file);
     logger.debug(`Processing file: ${absolutePath}`);
 
     // Normalize the display path to maintain the input path structure
     const displayPath = file; // Use the file path as provided by gatherFiles
 
-    if (absolutePath === outputFile) {
+    if (absolutePath === path.resolve(outputFile)) {
       logger.debug(`Skipping output file: ${outputFile}`);
       return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false, tokenCount: 0 };
     }
@@ -144,7 +142,7 @@ export async function processSingleFile(
       const extension = path.extname(file);
       content = escapeTripleBackticks(content);
 
-      if (removeWhitespaceFlag && !['.py', '.yaml', /* other extensions */].includes(extension)) {
+      if (removeWhitespaceFlag && !WHITESPACE_DEPENDENT_EXTENSIONS.includes(extension.toLowerCase())) {
         const originalLength = content.length;
         content = removeWhitespace(content);
         logger.debug(`Whitespace removal for ${displayPath}:
@@ -183,13 +181,6 @@ export async function processSingleFile(
     const errorStack = (error as Error).stack;
     logger.error(`❌ Error processing file ${file} in directory ${cwd}: ${errorMessage}`);
     logger.debug(`Error stack trace: ${errorStack}`);
-    return {
-      snippet: '',
-      wasIncluded: false,
-      defaultIgnored: false,
-      customIgnored: false,
-      isBinaryOrSvg: false,
-      tokenCount: 0
-    };
+    throw error;
   }
 }

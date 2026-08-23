@@ -3,18 +3,15 @@ Purpose: Ensures whitespace removal works as expected, but does not affect white
  */
 
 import {describe, it, expect, beforeEach, afterEach} from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
+import { runCli } from './helpers/runCli.js';
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-whitespace-removal");
 
 async function runCLI(args: string = "") {
-    const cliPath = path.resolve(__dirname, "../src/cli.ts");
-    return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+    return runCli(tempDir, args);
 }
 
 describe("Whitespace Removal", () => {
@@ -70,6 +67,14 @@ describe("Whitespace Removal", () => {
         
         const output = await fs.readFile(outputPath, "utf-8");
         expect(output).toContain("    return True");  // Indentation preserved
+    });
+
+    it("should preserve whitespace for all configured YAML extensions", async () => {
+        await fs.writeFile(path.join(tempDir, "test.yml"), "root:\n  nested: true\n");
+        await runCLI("-i test.yml -o output-yaml.md");
+
+        const output = await fs.readFile(path.join(tempDir, "output-yaml.md"), "utf-8");
+        expect(output).toContain("  nested: true");
     });
 
     it("should show appropriate message about whitespace handling", async () => {

@@ -3,19 +3,16 @@ Purpose: Ensures that default ignores, .aidigestignore, and --no-default-ignores
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { exec } from "child_process";
-import { promisify } from "util";
 import path from "path";
 import fs from "fs/promises";
 import os from "os";
+import { runCli } from './helpers/runCli.js';
 
-const execAsync = promisify(exec);
 const tempDir = path.join(os.tmpdir(), "ai-md-test-ignore-behavior");
 const ignoreFilePath = path.join(tempDir, ".aidigestignore");
 
 async function runCLI(args: string = "") {
-	const cliPath = path.resolve(__dirname, "../src/cli.ts");
-	return execAsync(`npx tsx ${cliPath} ${args}`, { cwd: tempDir });
+	return runCli(tempDir, args);
 }
 
 describe("Ignore Behavior", () => {
@@ -38,5 +35,17 @@ describe("Ignore Behavior", () => {
 		await fs.writeFile(testFile, "log content");
 		const { stdout } = await runCLI();
 		expect(stdout).not.toContain("test.log");
+	});
+
+	it("should exclude common credential files by default", async () => {
+		await fs.writeFile(path.join(tempDir, ".npmrc"), "//registry.npmjs.org/:_authToken=secret");
+		await fs.writeFile(path.join(tempDir, "private.pem"), "private material");
+		await fs.writeFile(path.join(tempDir, "safe.txt"), "safe content");
+
+		await runCLI();
+		const output = await fs.readFile(path.join(tempDir, "codebase.md"), "utf8");
+		expect(output).toContain("safe content");
+		expect(output).not.toContain("secret");
+		expect(output).not.toContain("private material");
 	});
 });

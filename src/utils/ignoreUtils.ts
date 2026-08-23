@@ -1,6 +1,7 @@
 import path from "path";
 import { createMicromatchFilter } from "./micromatchUtils.js";
 import type { Ignore } from 'ignore';
+import { logger } from './logger.js';
 
 interface TestResult {
   ignored: boolean;
@@ -17,6 +18,7 @@ interface TestResult {
  * @returns {Ignore} An instance of the ignore filter with compatible interface.
  */
 export function createIgnoreFilter(patterns: string[], source: string): Ignore {
+  logger.debug(`Creating ignore filter for ${source}`);
   const filterFn = createMicromatchFilter(patterns);
   
   // Create an object that matches the Ignore interface
@@ -35,14 +37,14 @@ export function createIgnoreFilter(patterns: string[], source: string): Ignore {
       return {
         ignored: filterFn(item),
         unignored: !filterFn(item),
-        pattern: patterns.find(p => filterFn(item)) || null
+        pattern: patterns.find((_pattern) => filterFn(item)) || null
       };
     },
     checkIgnore: (pathname: string): TestResult => {
       return {
         ignored: filterFn(pathname),
         unignored: !filterFn(pathname),
-        pattern: patterns.find(p => filterFn(pathname)) || null
+        pattern: patterns.find((_pattern) => filterFn(pathname)) || null
       };
     }
   };

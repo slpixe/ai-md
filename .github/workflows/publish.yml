@@ -1,65 +1,100 @@
 name: Publish
+
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, master]
+    paths: [package.json]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check-version:
+    name: check version
     runs-on: ubuntu-latest
     outputs:
-      version_changed: ${{ steps.version-check.outputs.changed }}
-      version: ${{ steps.version-check.outputs.version }}
+      changed: ${{ steps.version.outputs.changed }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
 
-      - name: Check for version change
-        id: version-check
+      - name: Check version change
+        id: version
         run: |
-          CURRENT_VERSION=$(jq -r .version package.json)
-          git checkout HEAD^1
-          PREVIOUS_VERSION=$(jq -r .version package.json)
-          if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          VERSION="$(node -p "require('./package.json').version")"
+          PREVIOUS_VERSION="$(git show HEAD^:package.json | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => console.log(JSON.parse(input).version));")"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if [ "$VERSION" = "$PREVIOUS_VERSION" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
   publish:
+    name: publish
     needs: check-version
-    if: needs.check-version.outputs.version_changed == 'true'
+    if: needs.check-version.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    environment: release
     permissions:
-      contents: read
+      contents: write
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version-file: '.nvmrc'
-          registry-url: 'https://registry.npmjs.org'
-          cache: 'pnpm'
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm build
+      - name: Validate release
+        run: pnpm validate
 
-      - name: Publish to NPM
-        run: npm publish --ignore-scripts  # Skip prepublishOnly script
+      - name: Create release tag
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git rev-parse "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            test "$(git rev-list -n 1 "v${VERSION}")" = "$GITHUB_SHA"
+          else
+            git tag -a "v${VERSION}" -m "v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
+
+      - name: Publish to npm with trusted publishing
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          if npm view "ai-txt@${VERSION}" version >/dev/null 2>&1; then
+            echo "ai-txt@${VERSION} is already published"
+          else
+            npm publish --access public --provenance
+          fi
 
       - name: Publish to JSR
-        run: npx jsr publish
+        env:
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          if curl --fail --silent --show-error "https://jsr.io/@slpixe/ai-md/meta.json" \
+            | node -e "let input=''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.exit(JSON.parse(input).versions[process.env.VERSION] ? 0 : 1));"; then
+            echo "@slpixe/ai-md@${VERSION} is already published"
+          else
+            pnpm exec jsr publish
+          fi
