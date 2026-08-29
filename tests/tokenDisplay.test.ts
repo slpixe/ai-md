@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "path";
 import fs from "fs/promises";
-import os from "os";
 import { runCli } from './helpers/runCli.js';
+import { createTempDir } from './helpers/tempDir.js';
 
-const tempDir = path.join(os.tmpdir(), "ai-md-test-token-display");
+let tempDir: string;
 
 async function runCLI(args: string = "") {
   return runCli(tempDir, args);
@@ -12,7 +12,7 @@ async function runCLI(args: string = "") {
 
 describe("Token Display", () => {
   beforeEach(async () => {
-    await fs.mkdir(tempDir, { recursive: true });
+    tempDir = await createTempDir('ai-md-test-token-display');
     
     // Create test files with known content
     await fs.writeFile(
@@ -77,20 +77,20 @@ describe("Token Display", () => {
     });
     
     const totalPercentage = percentages.reduce((sum, p) => sum + p, 0);
-    expect(totalPercentage).toBeCloseTo(100, 1); // Allow for minor floating point differences
+    expect(Math.abs(totalPercentage - 100)).toBeLessThanOrEqual(0.2); // One-decimal display rounding
   });
 
-  it("should handle empty files", async () => {
+  it("should include Markdown framing in the estimate for empty files", async () => {
     await fs.writeFile(path.join(tempDir, "empty.txt"), "");
     const { stdout } = await runCLI("--show-tokens");
     
     expect(stdout).toContain("empty.txt");
-    expect(stdout).toMatch(/empty\.txt.*0 tokens/);
+    expect(stdout).toMatch(/empty\.txt.*[1-9]\d* tokens/);
   });
 
-  it("should show fixed token count for binary files", async () => {
+  it("should estimate the generated Markdown snippet for binary files", async () => {
     const { stdout } = await runCLI("--show-tokens");
-    expect(stdout).toMatch(/test\.bin.*10 tokens/); // Binary files get 10 tokens
+    expect(stdout).toMatch(/test\.bin.*\d+ tokens/);
   });
 
   it("should not show token analysis without --show-tokens flag", async () => {

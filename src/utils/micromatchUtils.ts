@@ -16,6 +16,19 @@ function enhanceDirectoryPattern(pattern: string): string[] {
   ];
 }
 
+/** Convert ignore patterns into forms that glob can use to avoid traversing ignored trees. */
+export function createTraversalIgnorePatterns(patterns: string[]): string[] {
+  const traversalPatterns = patterns.flatMap((pattern) => {
+    const normalized = pattern.replace(/\\/g, '/').trim().replace(/^\//, '').replace(/\/$/, '');
+    if (!normalized || normalized.startsWith('!')) return [];
+
+    const anywherePattern = normalized.startsWith('**/') ? normalized : `**/${normalized}`;
+    return [normalized, `${normalized}/**`, anywherePattern, `${anywherePattern}/**`];
+  });
+
+  return [...new Set(traversalPatterns)];
+}
+
 /**
  * Checks if a file matches a pattern, handling both directory and file patterns
  *

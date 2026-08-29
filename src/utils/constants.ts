@@ -106,3 +106,6 @@ export const DEFAULT_IGNORES = [
 
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export const MAX_SINGLE_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+export const MAX_CONCURRENT_BUFFER_SIZE = 16 * 1024 * 1024; // 16MB of source files in flight
+export const MAX_CONCURRENCY = 64;
+export const MAX_TOKEN_LIMIT = 10_000_000;

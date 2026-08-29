@@ -5,10 +5,10 @@ Purpose: Ensures large files are skipped properly, and concurrency does not caus
 import {describe, it, expect, beforeEach, afterEach} from "vitest";
 import path from "path";
 import fs from "fs/promises";
-import os from "os";
 import { runCli } from './helpers/runCli.js';
+import { createTempDir } from './helpers/tempDir.js';
 
-const tempDir = path.join(os.tmpdir(), "ai-md-test-concurrency-large");
+let tempDir: string;
 
 async function runCLI(args: string = "") {
 	return runCli(tempDir, args);
@@ -16,7 +16,7 @@ async function runCLI(args: string = "") {
 
 describe("Concurrency & Large Files", () => {
 beforeEach(async () => {
-  await fs.mkdir(tempDir, {recursive: true});
+  tempDir = await createTempDir('ai-md-test-concurrency-large');
   
   // Create multiple test files
   for (let i = 1; i <= 10; i++) {

@@ -1,31 +1,46 @@
 #!/usr/bin/env node
-import { program, Command, InvalidArgumentError } from 'commander';
-import path from 'path';
-import { updateLoggerLevel } from './utils/logger.js';
+import { realpathSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Command, InvalidArgumentError } from 'commander';
 import { aggregateFiles } from './aggregator/aggregateFiles.js';
+import { MAX_CONCURRENCY, MAX_TOKEN_LIMIT } from './utils/constants.js';
+import { configureLogger } from './utils/logger.js';
 import { VERSION } from './version.js';
 
 const DEFAULT_CONCURRENCY = 4;
-const MAX_CONCURRENCY = 64;
+const DEFAULT_OUTPUT = 'codebase.md';
 
-function parseConcurrency(value: string): number {
-    if (!/^\d+$/.test(value)) {
-        throw new InvalidArgumentError('Concurrency must be a positive integer.');
-    }
+function parsePositiveInteger(value: string, label: string, maximum: number): number {
+  if (!/^\d+$/.test(value)) {
+    throw new InvalidArgumentError(`${label} must be a positive integer.`);
+  }
 
-    const parsed = Number(value);
-    if (parsed < 1 || parsed > MAX_CONCURRENCY) {
-        throw new InvalidArgumentError(`Concurrency must be between 1 and ${MAX_CONCURRENCY}.`);
-    }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
+    throw new InvalidArgumentError(`${label} must be between 1 and ${maximum}.`);
+  }
 
-    return parsed;
+  return parsed;
 }
 
-const cli: Command = program
+function parseConcurrency(value: string): number {
+  return parsePositiveInteger(value, 'Concurrency', MAX_CONCURRENCY);
+}
+
+function parseMaxTokens(value: string): number {
+  return parsePositiveInteger(value, 'Maximum token count', MAX_TOKEN_LIMIT);
+}
+
+export function createCli(): Command {
+  return new Command()
+    .name('ai-md')
     .version(VERSION)
     .description('Aggregate files into a single Markdown file')
     .option('-i, --input <paths...>', 'Input file/directory paths')
-    .option('-o, --output <path>', 'Output file path', 'codebase.md')
+    .option('-o, --output <path>', 'Output file path', DEFAULT_OUTPUT)
+    .option('--stdout', 'Write only the generated Markdown to standard output')
+    .option('--max-tokens <number>', `Maximum estimated tokens to include (max: ${MAX_TOKEN_LIMIT})`, parseMaxTokens)
     .option('--ignore-file <path>', 'Path to ignore file', '.aidigestignore')
     .option('--ignore <pattern>', 'Additional ignore patterns (can be used multiple times)', (val: string, prev: string[]) => [...prev, val], [])
     .option('--no-default-ignores', 'Disable default ignore patterns')
@@ -33,56 +48,65 @@ const cli: Command = program
     .option('-f, --show-files', 'Show output files being processed')
     .option('-t, --show-tokens', 'Show token count analysis for each file')
     .option(
-        '-c, --concurrent [number]',
-        `Number of concurrent file-processing workers (default: ${DEFAULT_CONCURRENCY}, max: ${MAX_CONCURRENCY})`,
-        parseConcurrency,
+      '-c, --concurrent [number]',
+      `Number of concurrent file-processing workers (default: ${DEFAULT_CONCURRENCY}, max: ${MAX_CONCURRENCY})`,
+      parseConcurrency,
     )
     .option('-d, --dry-run', 'Show what would be done without making changes')
     .option('-v, --verbose', 'Show debug-level logs')
     .action(async (options) => {
-        // Always call updateLoggerLevel with the verbose flag state
-        updateLoggerLevel(!!options.verbose);
+      configureLogger(Boolean(options.verbose), Boolean(options.stdout));
+      if (options.stdout && options.dryRun) {
+        throw new InvalidArgumentError('--stdout cannot be combined with --dry-run.');
+      }
+      if (options.stdout && options.output !== DEFAULT_OUTPUT) {
+        throw new InvalidArgumentError('--stdout cannot be combined with --output.');
+      }
 
-        const inputPaths = options.input || [process.cwd()];
-        const outputFile = path.isAbsolute(options.output)
-            ? options.output
-            : path.join(process.cwd(), options.output);
-        const ignoreFileAbsolute = path.isAbsolute(options.ignoreFile)
-            ? options.ignoreFile
-            : path.join(process.cwd(), options.ignoreFile);
+      const outputFile = path.resolve(options.output);
+      const ignoreFilePath = path.resolve(options.ignoreFile);
+      const concurrency = options.concurrent === true
+        ? DEFAULT_CONCURRENCY
+        : options.concurrent ?? 1;
 
-        const concurrentValue = options.concurrent === true
-            ? DEFAULT_CONCURRENCY
-            : options.concurrent ?? false;
-
-        await aggregateFiles(
-            inputPaths,
-            outputFile,
-            options.defaultIgnores,
-            !options.keepWhitespace, //remove whitespace by default
-            options.showFiles,
-            ignoreFileAbsolute,
-            concurrentValue ?? false,
-            options.dryRun,
-            options.ignore,
-            options.showTokens
-        );
-    });
-
-export default cli;
-
-// Auto-execute if this is the entry point (handles both direct invocation and mod.ts import)
-const currentFileUrl = new URL(import.meta.url);
-const entryPoints = [
-    new URL(import.meta.resolve('./cli.js')).href,
-    new URL(import.meta.resolve('../mod.js')).href
-];
-
-if (entryPoints.includes(currentFileUrl.href)) {
-    cli.parseAsync(process.argv).catch((error: unknown) => {
-        if (error instanceof Error) {
-            console.error(error.message);
-        }
-        process.exitCode = 1;
+      await aggregateFiles({
+        inputPaths: options.input ?? [process.cwd()],
+        outputFile,
+        useDefaultIgnores: options.defaultIgnores,
+        removeWhitespace: !options.keepWhitespace,
+        showFiles: options.showFiles,
+        ignoreFilePath,
+        concurrency,
+        dryRun: options.dryRun,
+        ignorePatterns: options.ignore,
+        showTokens: options.showTokens,
+        stdout: options.stdout,
+        maxTokens: options.maxTokens,
+      });
     });
 }
+
+const cli: Command = createCli();
+
+export async function runCli(argv: string[] = process.argv): Promise<void> {
+  await cli.parseAsync(argv);
+}
+
+function isDirectExecution(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isDirectExecution()) {
+  runCli().catch((error: unknown) => {
+    if (error instanceof Error) console.error(error.message);
+    process.exitCode = 1;
+  });
+}
+
+export { aggregateFiles };
+export default cli;

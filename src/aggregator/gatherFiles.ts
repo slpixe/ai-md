@@ -2,7 +2,14 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { glob } from 'glob';
 import { logger } from "../utils/logger.js";
-import { filterFiles } from "../utils/micromatchUtils.js";
+import { createTraversalIgnorePatterns, filterFiles } from "../utils/micromatchUtils.js";
+import type { FileObject } from '../types/index.js';
+
+export interface GatherFilesOptions {
+  includePatterns?: string[];
+  excludePatterns?: string[];
+  traversalIgnorePatterns?: string[];
+}
 
 /**
  * Normalizes a path to use forward slashes and handles relative paths.
@@ -20,20 +27,19 @@ function normalizeRelativePath(basePath: string, filePath: string): string {
  * Gathers files based on input paths, respecting include/exclude patterns.
  * 
  * @param inputPaths - Array of file/directory paths or glob patterns to process
- * @param includePatterns - Optional array of glob patterns to include
- * @param excludePatterns - Optional array of glob patterns to exclude
+ * @param options - Include, exclude, and traversal-pruning patterns
  * @returns Array of gathered files with their working directories
  */
 export async function gatherFiles(
   inputPaths: string[],
-  includePatterns?: string[],
-  excludePatterns?: string[]
-): Promise<{ cwd: string; file: string }[]> {
-  const allFiles: { cwd: string; file: string }[] = [];
+  options: GatherFilesOptions = {},
+): Promise<FileObject[]> {
+  const allFiles: FileObject[] = [];
   logger.debug(`Starting to gather files from ${inputPaths.length} input paths`);
 
   // If no includes specified, treat all files as included
-  const effectiveIncludes = includePatterns?.length ? includePatterns : ['**/*'];
+  const effectiveIncludes = options.includePatterns?.length ? options.includePatterns : ['**/*'];
+  const traversalIgnores = createTraversalIgnorePatterns(options.traversalIgnorePatterns ?? []);
 
   for (const inputPath of inputPaths) {
     logger.debug(`Processing input path: ${inputPath}`);
@@ -46,13 +52,14 @@ export async function gatherFiles(
           nodir: true, 
           dot: true,
           cwd: cwd,
-          absolute: true
+          absolute: true,
+          ignore: traversalIgnores,
         });
         logger.debug(`Found ${files.length} files matching pattern ${inputPath}`);
         
         // Filter files based on include/exclude patterns
         const normalizedPaths = files.map(f => normalizeRelativePath(cwd, f));
-        const filteredPaths = filterFiles(normalizedPaths, effectiveIncludes, excludePatterns);
+        const filteredPaths = filterFiles(normalizedPaths, effectiveIncludes, options.excludePatterns);
         
         for (const normalizedPath of filteredPaths) {
           allFiles.push({ 
@@ -71,7 +78,8 @@ export async function gatherFiles(
             nodir: true, 
             dot: true, 
             cwd: resolved,
-            absolute: true
+            absolute: true,
+            ignore: traversalIgnores,
           });
           logger.debug(`Found ${files.length} files in directory ${resolved}`);
           
@@ -83,7 +91,7 @@ export async function gatherFiles(
           });
           
           // Filter files based on include/exclude patterns
-          const filteredPaths = filterFiles(relativePaths, effectiveIncludes, excludePatterns);
+          const filteredPaths = filterFiles(relativePaths, effectiveIncludes, options.excludePatterns);
           
           for (const normalizedPath of filteredPaths) {
             allFiles.push({ 
@@ -97,7 +105,7 @@ export async function gatherFiles(
           
           // For individual files, still check against include/exclude patterns
           const normalizedPath = baseName;
-          const shouldInclude = filterFiles([normalizedPath], effectiveIncludes, excludePatterns);
+          const shouldInclude = filterFiles([normalizedPath], effectiveIncludes, options.excludePatterns);
           
           if (shouldInclude.length > 0) {
             logger.debug(`${resolved} is an included file`);
@@ -119,7 +127,14 @@ export async function gatherFiles(
     }
   }
   
-  logger.debug(`Total files gathered: ${allFiles.length}`);
-  allFiles.forEach(f => logger.debug(`Gathered file: ${f.file} (cwd: ${f.cwd})`));
-  return allFiles;
+  const uniqueFiles = new Map<string, FileObject>();
+  for (const fileObject of allFiles) {
+    const absolutePath = path.resolve(fileObject.cwd, fileObject.file);
+    const dedupeKey = process.platform === 'win32' ? absolutePath.toLowerCase() : absolutePath;
+    if (!uniqueFiles.has(dedupeKey)) uniqueFiles.set(dedupeKey, fileObject);
+  }
+
+  logger.debug(`Total files gathered: ${allFiles.length}; unique files: ${uniqueFiles.size}`);
+  uniqueFiles.forEach(f => logger.debug(`Gathered file: ${f.file} (cwd: ${f.cwd})`));
+  return [...uniqueFiles.values()];
 }

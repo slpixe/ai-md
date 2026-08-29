@@ -40,6 +40,8 @@ By default, the command scans the current directory and writes `codebase.md`.
 ```text
 -i, --input <paths...>     Input files, directories, or glob patterns
 -o, --output <path>        Output path (default: codebase.md)
+--stdout                   Write only generated Markdown to standard output
+--max-tokens <number>      Limit included content by estimated token count
 --ignore-file <path>       Ignore file (default: .aidigestignore)
 --ignore <pattern>         Additional ignore pattern; may be repeated
 --no-default-ignores       Disable built-in ignore patterns
@@ -57,7 +59,13 @@ Examples:
 pnpm dlx ai-txt --show-files -i src README.md
 pnpm dlx ai-txt --ignore "*.test.ts" --ignore "coverage/**"
 pnpm dlx ai-txt --keep-whitespace --show-tokens --concurrent 8
+pnpm dlx ai-txt --stdout -i src > source-context.md
+pnpm dlx ai-txt --max-tokens 120000 -i src README.md
 ```
+
+`--stdout` keeps standard output clean for piping and sends diagnostic logs to standard error. It cannot be combined with `--output` or `--dry-run`.
+
+`--max-tokens` processes files in deterministic path order and skips any file whose complete generated Markdown snippet would exceed the remaining estimated budget. Smaller later files can still be included. Estimates use the bundled tokenizer and may differ from a specific model's exact count.
 
 ## Ignored and sensitive files
 
@@ -66,6 +74,21 @@ Built-in ignores cover dependency directories, generated output, common caches, 
 Generated aggregates can still contain source code, configuration, personal information, or credentials stored under an unusual filename. Review `codebase.md` before uploading or sharing it. Use `--dry-run --show-files` to inspect the file list first. `--no-default-ignores` should be used only when you understand the disclosure risk.
 
 Whitespace is reduced by default, except for configured whitespace-sensitive formats such as Python, YAML, Pug, Haml, and Godot scripts. Use `--keep-whitespace` to preserve all source formatting.
+
+## Programmatic use
+
+Importing the package does not execute the CLI. The aggregation API accepts an options object:
+
+```js
+import { aggregateFiles } from 'ai-txt';
+
+await aggregateFiles({
+  inputPaths: ['src', 'README.md'],
+  outputFile: 'codebase.md',
+  concurrency: 4,
+  maxTokens: 120_000,
+});
+```
 
 ## Development
 

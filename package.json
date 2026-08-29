@@ -3,7 +3,14 @@
   "version": "2.0.0",
   "description": "CLI tool to aggregate files into a single Markdown file",
   "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
   "bin": {
     "ai-md": "dist/cli.js"
   },

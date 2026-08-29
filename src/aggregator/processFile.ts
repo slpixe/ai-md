@@ -2,11 +2,10 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import { isTextFile, shouldTreatAsBinary, getFileType } from '../utils/fileUtils.js';
 import { MAX_SINGLE_FILE_SIZE, WHITESPACE_DEPENDENT_EXTENSIONS } from '../utils/constants.js';
-import ignore from 'ignore';
 import { logger } from "../utils/logger.js";
 import { escapeTripleBackticks, removeWhitespace } from "../utils/textUtils.js";
-import { estimateTokenCount } from "../utils/tokenUtils.js";
 import { normalizePath } from "../utils/ignoreUtils.js";
+import type { PathFilter, ProcessFileResult } from '../types/index.js';
 
 function generatePathVariants(filePath: string): string[] {
   const normalizedPath = normalizePath(filePath);
@@ -32,11 +31,11 @@ function generatePathVariants(filePath: string): string[] {
 
 function isFileIgnored(
   filePath: string,
-  ignoreFilter: ignore.Ignore
+  ignoreFilter: PathFilter
 ): boolean {
   const variants = generatePathVariants(filePath);
   return variants.some(variant => {
-    const isIgnored = ignoreFilter.ignores(variant);
+    const isIgnored = ignoreFilter(variant);
     if (isIgnored) {
       logger.debug(`File ${filePath} ignored by pattern matching: ${variant}`);
     }
@@ -46,9 +45,9 @@ function isFileIgnored(
 
 function shouldIgnoreFile(
   relativePath: string,
-  defaultIgnore: ignore.Ignore,
-  customIgnore: ignore.Ignore,
-  cliIgnore: ignore.Ignore,
+  defaultIgnore: PathFilter,
+  customIgnore: PathFilter,
+  cliIgnore: PathFilter,
   useDefaultIgnores: boolean
 ): { ignored: boolean; isDefaultIgnore: boolean } {
   // Check CLI ignores first (highest precedence)
@@ -77,18 +76,11 @@ export async function processSingleFile(
   file: string,
   outputFile: string,
   useDefaultIgnores: boolean,
-  defaultIgnore: ignore.Ignore,
-  customIgnore: ignore.Ignore,
-  cliIgnore: ignore.Ignore,
+  defaultIgnore: PathFilter,
+  customIgnore: PathFilter,
+  cliIgnore: PathFilter,
   removeWhitespaceFlag: boolean
-): Promise<{
-  snippet: string;
-  wasIncluded: boolean;
-  defaultIgnored: boolean;
-  customIgnored: boolean;
-  isBinaryOrSvg: boolean;
-  tokenCount: number;
-}> {
+): Promise<ProcessFileResult> {
   try {
     const absolutePath = path.resolve(cwd, file);
     logger.debug(`Processing file: ${absolutePath}`);
@@ -98,19 +90,19 @@ export async function processSingleFile(
 
     if (absolutePath === path.resolve(outputFile)) {
       logger.debug(`Skipping output file: ${outputFile}`);
-      return { snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false, tokenCount: 0 };
+      return { displayPath, snippet: '', wasIncluded: false, defaultIgnored: true, customIgnored: false, isBinaryOrSvg: false };
     }
 
     // Check if file should be ignored using the full relative path
     const ignoreResult = shouldIgnoreFile(file, defaultIgnore, customIgnore, cliIgnore, useDefaultIgnores);
     if (ignoreResult.ignored) {
       return {
+        displayPath,
         snippet: '',
         wasIncluded: false,
         defaultIgnored: ignoreResult.isDefaultIgnore,
         customIgnored: !ignoreResult.isDefaultIgnore,
-        isBinaryOrSvg: false,
-        tokenCount: 0
+        isBinaryOrSvg: false
       };
     }
 
@@ -127,12 +119,12 @@ export async function processSingleFile(
       logger.debug(`File exceeds size limit (${(MAX_SINGLE_FILE_SIZE / 1024 / 1024).toFixed(1)}MB): ${displayPath}`);
       const snippet = `# ${displayPath}\n\n(This text file is > ${(MAX_SINGLE_FILE_SIZE / 1024 / 1024).toFixed(1)} MB, skipping content.)\n\n`;
       return {
+        displayPath,
         snippet,
         wasIncluded: true,
         defaultIgnored: false,
         customIgnored: false,
-        isBinaryOrSvg: false,
-        tokenCount: estimateTokenCount(snippet)
+        isBinaryOrSvg: false
       };
     }
 
@@ -153,12 +145,12 @@ export async function processSingleFile(
 
       const snippet = `# ${displayPath}\n\n\`\`\`${extension.slice(1)}\n${content}\n\`\`\`\n\n`;
       return {
+        displayPath,
         snippet,
         wasIncluded: true,
         defaultIgnored: false,
         customIgnored: false,
-        isBinaryOrSvg: false,
-        tokenCount: estimateTokenCount(content)
+        isBinaryOrSvg: false
       };
     } else {
       const fileType = getFileType(absolutePath);
@@ -168,12 +160,12 @@ export async function processSingleFile(
           : `This is a binary file of the type: ${fileType}\n\n`
       }`;
       return {
+        displayPath,
         snippet,
         wasIncluded: true,
         defaultIgnored: false,
         customIgnored: false,
-        isBinaryOrSvg: true,
-        tokenCount: 10 // Fixed token count for binary/SVG files
+        isBinaryOrSvg: true
       };
     }
   } catch (error) {
