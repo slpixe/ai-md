@@ -5,11 +5,11 @@ Purpose: Tests the interaction between include (-i) and exclude patterns, ensuri
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "path";
 import fs from "fs/promises";
-import os from "os";
 import { runCli } from './helpers/runCli.js';
+import { createTempDir } from './helpers/tempDir.js';
 
-const tempDir = path.join(os.tmpdir(), "ai-md-test-include-exclude");
-const codebasePath = path.join(tempDir, "codebase.md");
+let tempDir: string;
+let codebasePath: string;
 
 async function runCLI(args: string = ""): Promise<void> {
   await runCli(tempDir, args);
@@ -17,8 +17,9 @@ async function runCLI(args: string = ""): Promise<void> {
 
 describe("Advanced Include/Exclude Behavior", () => {
   beforeEach(async () => {
+    tempDir = await createTempDir('ai-md-test-include-exclude');
+    codebasePath = path.join(tempDir, 'codebase.md');
     // Create test directory structure
-    await fs.mkdir(tempDir, { recursive: true });
     
     // Create folder-a and its contents
     await fs.mkdir(path.join(tempDir, "folder-a"), { recursive: true });

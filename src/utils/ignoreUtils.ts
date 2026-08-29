@@ -1,53 +1,18 @@
 import path from "path";
 import { createMicromatchFilter } from "./micromatchUtils.js";
-import type { Ignore } from 'ignore';
+import type { PathFilter } from '../types/index.js';
 import { logger } from './logger.js';
 
-interface TestResult {
-  ignored: boolean;
-  unignored: boolean;
-  pattern: string | null;
-}
-
 /**
- * Create an ignore filter function from an array of patterns.
- * This function uses micromatch for more powerful glob pattern matching.
+ * Create a path predicate from an array of ignore patterns.
  *
  * @param {string[]} patterns - The user provided ignore patterns.
  * @param {string} source - A descriptor for logging purposes.
- * @returns {Ignore} An instance of the ignore filter with compatible interface.
+ * @returns A predicate that is true when a path should be ignored.
  */
-export function createIgnoreFilter(patterns: string[], source: string): Ignore {
+export function createIgnoreFilter(patterns: string[], source: string): PathFilter {
   logger.debug(`Creating ignore filter for ${source}`);
-  const filterFn = createMicromatchFilter(patterns);
-  
-  // Create an object that matches the Ignore interface
-  return {
-    ignores: (filePath: string): boolean => filterFn(filePath),
-    add: () => {
-      return {} as Ignore;
-    },
-    filter: (items: string[]): string[] => {
-      return items.filter(item => !filterFn(item));
-    },
-    createFilter: () => {
-      return (item: string) => !filterFn(item);
-    },
-    test: (item: string): TestResult => {
-      return {
-        ignored: filterFn(item),
-        unignored: !filterFn(item),
-        pattern: patterns.find((_pattern) => filterFn(item)) || null
-      };
-    },
-    checkIgnore: (pathname: string): TestResult => {
-      return {
-        ignored: filterFn(pathname),
-        unignored: !filterFn(pathname),
-        pattern: patterns.find((_pattern) => filterFn(pathname)) || null
-      };
-    }
-  };
+  return createMicromatchFilter(patterns);
 }
 
 /**

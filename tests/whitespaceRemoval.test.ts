@@ -5,10 +5,10 @@ Purpose: Ensures whitespace removal works as expected, but does not affect white
 import {describe, it, expect, beforeEach, afterEach} from "vitest";
 import path from "path";
 import fs from "fs/promises";
-import os from "os";
 import { runCli } from './helpers/runCli.js';
+import { createTempDir } from './helpers/tempDir.js';
 
-const tempDir = path.join(os.tmpdir(), "ai-md-test-whitespace-removal");
+let tempDir: string;
 
 async function runCLI(args: string = "") {
     return runCli(tempDir, args);
@@ -16,7 +16,7 @@ async function runCLI(args: string = "") {
 
 describe("Whitespace Removal", () => {
     beforeEach(async () => {
-        await fs.mkdir(tempDir, {recursive: true});
+        tempDir = await createTempDir('ai-md-test-whitespace-removal');
         
         // Create test files with whitespace
         await fs.writeFile(

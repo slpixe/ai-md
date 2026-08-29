@@ -5,12 +5,12 @@ Purpose: Ensures that CLI ignore patterns work correctly, both independently and
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import path from "path";
 import fs from "fs/promises";
-import os from "os";
 import { runCli } from './helpers/runCli.js';
+import { createTempDir } from './helpers/tempDir.js';
 
-const tempDir = path.join(os.tmpdir(), "ai-md-test-cli-ignore");
-const ignoreFilePath = path.join(tempDir, ".aidigestignore");
-const codebasePath = path.join(tempDir, "codebase.md");
+let tempDir: string;
+let ignoreFilePath: string;
+let codebasePath: string;
 
 async function runCLI(args: string = "") {
   return runCli(tempDir, args);
@@ -18,7 +18,9 @@ async function runCLI(args: string = "") {
 
 describe("CLI Ignore Behavior", () => {
   beforeEach(async () => {
-    await fs.mkdir(tempDir, { recursive: true });
+    tempDir = await createTempDir('ai-md-test-cli-ignore');
+    ignoreFilePath = path.join(tempDir, '.aidigestignore');
+    codebasePath = path.join(tempDir, 'codebase.md');
     await fs.writeFile(path.join(tempDir, "a.ts"), "// TypeScript file");
     await fs.writeFile(path.join(tempDir, "b.css"), "/* CSS file */");
     await fs.mkdir(path.join(tempDir, "folder-b"), { recursive: true });

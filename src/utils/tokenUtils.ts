@@ -9,6 +9,6 @@ export function estimateTokenCount(text: string): number {
     return count;
   } catch (error) {
     logger.error("Error estimating token count:", error);
-    return 0;
+    throw error;
   }
 }
