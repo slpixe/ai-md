@@ -62,9 +62,10 @@
     "globals": "^17.11.0",
     "jsr": "^0.14.3",
     "tsx": "^4.23.12",
-    "typescript": "^5.9.3",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "@typescript/native": "npm:typescript@7.0.2"
   },
   "dependencies": {
     "commander": "^15.0.0",
